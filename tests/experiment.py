@@ -23,6 +23,24 @@ class ExperimentTests(unittest.TestCase):
         self.assertIsNone(extract_answer('前面有两个数字 11 与 27，得出差为 3。'))
         self.assertIsNone(extract_answer(r'<think>\boxed{47}</think>过程是 11 - 3 = 8。'))
 
+    def test_past_experiment_is_regraded_when_loaded(self):
+        with TemporaryDirectory() as temporary:
+            store = Path(temporary)
+            old = {
+                'id': 'old-scored-run', 'prompt': 'Find the two-digit number',
+                'media': 'token', 'status': 'completed', 'expected': '47',
+                'prediction': None, 'correct': False,
+                'startedAt': '2026-10-08T15:00:00+00:00',
+                'finishedAt': '2026-10-08T15:00:02+00:00',
+                'agents': [], 'transfers': [], 'events': [],
+                'answer': '所以正确的答案应该是47。',
+            }
+            (store / 'run-old-scored-run.json').write_text(__import__('json').dumps(old))
+            experiment = Experiment(('127.0.0.1:50051', '127.0.0.1:50052'), store=store)
+            historical = experiment.snapshot()['status']['history'][0]
+            self.assertEqual(historical['prediction'], '47')
+            self.assertIs(historical['correct'], True)
+
     def test_finished_run_can_be_reloaded(self):
         with TemporaryDirectory() as temporary:
             store = Path(temporary)
