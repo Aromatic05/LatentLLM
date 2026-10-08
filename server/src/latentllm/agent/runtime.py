@@ -13,12 +13,13 @@ from latentllm.transport.schema import model as wire
 
 class Runtime:
     def __init__(self, name: str | None, device: str = 'auto', *, latent_steps: int = 8,
-                 max_tokens: int = 512, judge_tokens: int = 768):
+                 max_tokens: int = 512, judge_tokens: int = 768, judge_thinking: bool = False):
         self.name = name or ''
         self.device = device
         self.latent_steps = latent_steps
         self.max_tokens = max_tokens
         self.judge_tokens = judge_tokens
+        self.judge_thinking = judge_thinking
         self.ready = False
         self.model: Any = None
         self.args = argparse.Namespace(model_name=self.name, task='gsm8k', prompt='sequential', think=False,
@@ -44,6 +45,17 @@ class Runtime:
         import torch
         if self.device.startswith('cuda'):
             torch.cuda.synchronize(device=self.device)
+
+    def _prepare(self, messages: list[dict[str, str]], role: str) -> tuple[Any, Any]:
+        if role == 'judger' and not self.judge_thinking:
+            # Qwen3's official non-thinking chat template avoids eating the output
+            # budget on analysis instead of returning an explicit answer.
+            prompt = self.model.tokenizer.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True, enable_thinking=False)
+            encoded = self.model.tokenizer(prompt, return_tensors='pt', add_special_tokens=False)
+            return encoded['input_ids'].to(self.device), encoded['attention_mask'].to(self.device)
+        _, ids, mask, _ = self.model.prepare_chat_batch([messages], add_generation_prompt=True)
+        return ids, mask
 
     def step(self, request: wire.StepRequest,
              incoming: tuple[wire.Header, bytes] | None) -> tuple[dict, wire.Header, bytes]:
@@ -76,7 +88,7 @@ class Runtime:
             messages = build_agent_messages_sequential_text_mas(
                 role=request.role, question=request.question, context=context,
                 method='text_mas', args=self.args)
-            _, ids, mask, _ = self.model.prepare_chat_batch([messages], add_generation_prompt=True)
+            ids, mask = self._prepare(messages, request.role)
             generated, _ = self.model.generate_text_batch(
                 ids, mask, max_new_tokens=token_budget, temperature=0.6, top_p=0.95)
             output = generated[0].strip()
@@ -85,7 +97,7 @@ class Runtime:
             messages = build_agent_message_sequential_latent_mas(
                 role=request.role, question=request.question, context='',
                 method='latent_mas', args=self.args)
-            _, ids, mask, _ = self.model.prepare_chat_batch([messages], add_generation_prompt=True)
+            ids, mask = self._prepare(messages, request.role)
             if request.role != 'judger':
                 with torch.no_grad():
                     cache = self.model.generate_latent_batch(

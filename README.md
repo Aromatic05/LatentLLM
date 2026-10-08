@@ -2,6 +2,8 @@
 
 Real Token / KV-Cache communication between independent LLM processes, with a live experiment dashboard.
 
+For a more reliable small-model demonstration, the final Judger uses the Qwen3 `enable_thinking=False` chat template by default for both modes. Use `--judge-thinking` on both nodes to restore the upstream generation style. The intermediate latent rollout is unchanged.
+
 The inference algorithms are adapted from [Gen-Verse/LatentMAS](https://github.com/Gen-Verse/LatentMAS), pinned as a Git submodule. This is a development laboratory, not a secure public multi-tenant service.
 
 ## Features
