@@ -14,7 +14,7 @@ The inference algorithms are adapted from [Gen-Verse/LatentMAS](https://github.c
 - LatentMAS mode: real per-layer KV tensors are copied from GPU memory to binary payloads, transferred over gRPC, reconstructed on the receiver, and reused for subsequent inference.
 - Planner → Critic → Refiner → Judger across two independently loaded inference processes.
 - React dashboard with topology, real agent outputs, real transfer events, staged compute/serialization measurements and same-prompt Token/KV comparisons.
-- Completed experiment traces are archived as `var/experiments/run-*.json` (intentionally not committed).
+- Completed experiment traces are archived as `var/experiments/run-*.json` (intentionally not committed). After restart, the dashboard restores the latest real run. The **实验历史** selector can load earlier Token and KV traces without re-running the models.
 
 **Scope:** The initial deployment uses two processes on the same host. This verifies serialization, process separation and inference state restoration, but loopback latency must not be reported as physical two-PC network latency. LatentMAS TextMAS and LatentMAS use different inference algorithms, so a direct wall-time comparison is not a measurement of transport alone.
 
@@ -49,7 +49,7 @@ Start the UI:
 pnpm --dir web dev
 ```
 
-Open `http://localhost:5173/`. The UI reports whether two nodes and their models are ready. Select Token or KV-Cache, input a task, and run both modes with the same prompt to compare results. Enter an optional expected answer to evaluate the final visible `\boxed{...}` result; a completed workflow is **not** treated as a correct solution when the box is absent or wrong. The Python coordinator API is at `http://127.0.0.1:8000/api/status`; Vite proxies `/api` in development.
+Open `http://localhost:5173/`. The UI reports whether two nodes and their models are ready. Select Token or KV-Cache, input a task, and run both modes with the same prompt to compare results. Enter an optional expected answer for conservative final-output grading. The evaluator accepts visible `\boxed{...}` answers and unambiguous final-answer statements, not arbitrary numeric values in working steps. It distinguishes **MATCHED**, **MISMATCH** and **UNPARSED** (such as an unterminated `<think>` block). A completed workflow is not automatically a correct answer. The Python coordinator API is at `http://127.0.0.1:8000/api/status`; Vite proxies `/api` in development.
 
 For two physical PCs, bind the compute gRPC nodes to a reachable IP and provide reachable `--local` / `--peer` addresses. Never expose unauthenticated gRPC inference services to the public internet.
 
@@ -69,4 +69,4 @@ PYTHONPATH=server/src server/.venv/bin/python -m unittest discover -s tests -p '
 pnpm --dir web build
 ```
 
-`tests/` checks externally observable Token ID roundtrips, real PyTorch KV tensor roundtrips, and actual gRPC process-facing streaming behavior. Production inference is checked separately by running real Qwen model processes and reviewing actual outputs.
+`tests/` checks externally observable Token ID roundtrips, real PyTorch KV tensor roundtrips, actual gRPC process-facing streaming behavior, archive grading, and continuation logits of a small real Qwen3 Transformer after a network KV handoff. Production inference is checked separately by running real Qwen model processes and reviewing actual outputs.
