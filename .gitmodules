@@ -1,0 +1,3 @@
+[submodule "upstream/LatentMAS"]
+	path = upstream/LatentMAS
+	url = https://github.com/Gen-Verse/LatentMAS.git
