@@ -31,6 +31,19 @@ def create_app(experiment: Experiment) -> FastAPI:
     async def status():
         return experiment.snapshot()['status']
 
+    @app.get('/api/runs')
+    async def history():
+        return [experiment.summary(run) for run in reversed(experiment.history)]
+
+    @app.get('/api/runs/{run_id}')
+    async def retrieve(run_id: str):
+        if experiment.run and experiment.run['id'] == run_id:
+            return experiment.run
+        for run in reversed(experiment.history):
+            if run['id'] == run_id:
+                return run
+        raise HTTPException(404, 'Experiment not found')
+
     @app.post('/api/runs', status_code=202)
     async def launch(request: RunInput):
         try:

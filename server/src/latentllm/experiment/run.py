@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 import uuid
+from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any
 
@@ -18,8 +20,17 @@ def utcnow() -> str:
 
 
 class Experiment:
-    def __init__(self, addresses: tuple[str, str]):
+    def __init__(self, addresses: tuple[str, str], store: Path | None = None):
         self.addresses = addresses
+        self.store = store or Path(__file__).resolve().parents[4] / 'var' / 'experiments'
+        self.history: list[dict[str, Any]] = []
+        for path in sorted(self.store.glob('run-*.json'), key=lambda file: file.stat().st_mtime)[-16:]:
+            try:
+                record = json.loads(path.read_text(encoding='utf-8'))
+                if record.get('status') in ('completed', 'failed'):
+                    self.history.append(record)
+            except (ValueError, OSError):
+                continue
         self.nodes: list[dict[str, Any]] = [
             {'id': 'node-a', 'host': addresses[0], 'online': False, 'model': None, 'device': None},
             {'id': 'node-b', 'host': addresses[1], 'online': False, 'model': None, 'device': None},
@@ -31,7 +42,29 @@ class Experiment:
         self.lock = asyncio.Lock()
 
     def snapshot(self) -> dict:
-        return {'type': 'snapshot', 'status': {'nodes': self.nodes, 'run': self.run, 'modelReady': self.model_ready}}
+        return {'type': 'snapshot', 'status': {'nodes': self.nodes, 'run': self.run, 'modelReady': self.model_ready,
+                                                'history': [self.summary(run) for run in reversed(self.history)]}}
+
+    @staticmethod
+    def summary(run: dict[str, Any]) -> dict[str, Any]:
+        started = datetime.fromisoformat(run['startedAt'])
+        finished = datetime.fromisoformat(run.get('finishedAt', run['startedAt']))
+        return {
+            'id': run['id'], 'prompt': run['prompt'], 'media': run['media'], 'status': run['status'],
+            'durationMs': (finished - started).total_seconds() * 1000,
+            'bytes': sum(transfer.get('bytes', 0) for transfer in run['transfers']),
+            'answer': run.get('answer'),
+        }
+
+    def archive(self, run: dict[str, Any]) -> None:
+        self.store.mkdir(parents=True, exist_ok=True)
+        path = self.store / f"run-{run['id']}.json"
+        pending = path.with_suffix('.tmp')
+        pending.write_text(json.dumps(run, ensure_ascii=False, indent=2), encoding='utf-8')
+        pending.replace(path)
+        self.history.append(run)
+        self.history = self.history[-16:]
+        self.publish()
 
     def publish(self) -> None:
         for queue in tuple(self.subscribers):
@@ -143,6 +176,7 @@ class Experiment:
             run['status'] = 'completed'
             run['finishedAt'] = utcnow()
             self.emit('run.completed', '全部 Agent 已完成协作任务')
+            self.archive(run)
         except Exception as error:
             run['status'] = 'failed'
             run['finishedAt'] = utcnow()
@@ -151,4 +185,4 @@ class Experiment:
             for agent in run['agents']:
                 if agent['status'] == 'running':
                     agent['status'] = 'failed'
-            self.publish()
+            self.archive(run)
