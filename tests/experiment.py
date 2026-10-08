@@ -8,8 +8,8 @@ from latentllm.experiment.run import Experiment, boxed_answer
 
 class ExperimentTests(unittest.TestCase):
     def test_answer_uses_visible_boxed_result_only(self):
-        self.assertEqual(boxed_answer('<think>Wrong: \boxed{29}</think>\boxed{47}'), '47')
-        self.assertIsNone(boxed_answer('<think>\boxed{47}</think>Original plan without final answer'))
+        self.assertEqual(boxed_answer(r'<think>Wrong: \boxed{29}</think>\boxed{47}'), '47')
+        self.assertIsNone(boxed_answer(r'<think>\boxed{47}</think>Original plan without final answer'))
 
     def test_finished_run_can_be_reloaded(self):
         with TemporaryDirectory() as temporary:
