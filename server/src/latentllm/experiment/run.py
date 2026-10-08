@@ -156,7 +156,13 @@ class Experiment:
                 if run['media'] == 'kv' and role != 'judger':
                     agent['latentSteps'] = result.latent_steps
                     agent['cachePositions'] = result.positions
-                message = result.output[:900] if result.output else f'{role.title()} 完成潜在推理，缓存序列长度 {result.positions}，无可读中间文本'
+                if result.output:
+                    message = result.output.split('</think>', 1)[-1].strip() if '</think>' in result.output else result.output
+                    if message.startswith('<think>'):
+                        message = '(模型只生成了思考内容，没有完成可读回答；请检查生成长度限制)'
+                    message = message[:900] or '(没有可读内容)'
+                else:
+                    message = f'{role.title()} 完成潜在推理，缓存序列长度 {result.positions}，无可读中间文本'
                 self.emit('agent.completed', message, agent=role, duration=result.duration_ms)
                 if index == len(ROLES) - 1:
                     run['answer'] = result.output

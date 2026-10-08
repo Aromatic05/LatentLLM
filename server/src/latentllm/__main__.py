@@ -43,7 +43,7 @@ def main() -> None:
     parser.add_argument('--model', default=os.environ.get('LATENTLLM_MODEL'), help='Qwen model name/path; omit to run in transport-only mode')
     parser.add_argument('--device', default='auto')
     parser.add_argument('--latent-steps', type=int, default=8)
-    parser.add_argument('--max-tokens', type=int, default=192)
+    parser.add_argument('--max-tokens', type=int, default=512)
     parser.add_argument('--judge-tokens', type=int, default=768, help='Generation budget for final answer, independent of intermediate agents')
     parser.add_argument('--api', action='store_true', help='Serve FastAPI on the coordinator node')
     parser.add_argument('--local', default='127.0.0.1:50051', help='PC A gRPC address')
