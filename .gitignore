@@ -1,0 +1,16 @@
+# dependencies and build output
+node_modules/
+dist/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.vite/
+# experiment data and local model files
+var/*
+!var/.gitkeep
+.env
+.env.*
+!.env.example
+.DS_Store
