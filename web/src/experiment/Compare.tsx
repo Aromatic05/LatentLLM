@@ -1,5 +1,5 @@
 import { ArrowLeftRight, CheckCircle2, XCircle, CircleHelp, Clock3, Database, FlaskConical } from 'lucide-react';
-import { useWorkspace } from './State';
+import { useRun, useWorkspace } from './State';
 import { visibleOutput } from '../agent/Output';
 import type { Media, RunSummary } from './Model';
 
@@ -24,7 +24,7 @@ function ResultCard({ media, result }: { media: Media; result?: RunSummary }) {
 
 export function ComparePanel() {
   const { status } = useWorkspace();
-  const current = status.run;
+  const current = useRun();
   const history = status.history ?? [];
   const matching = history.filter(run => current && run.prompt === current.prompt && run.status === 'completed');
   const last = (mode: Media) => matching.find(run => run.media === mode);

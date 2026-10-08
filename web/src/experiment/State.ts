@@ -1,9 +1,11 @@
 import { create } from 'zustand';
-import type { AgentRecord, Media, StatusRecord } from './Model';
+import type { AgentRecord, Media, RunRecord, StatusRecord } from './Model';
 
 interface WorkspaceState {
   status: StatusRecord;
   connected: boolean;
+  archive: RunRecord | null;
+  setArchive: (archive: RunRecord | null) => void;
   selectedAgent: string | null;
   media: Media;
   busy: boolean;
@@ -26,6 +28,8 @@ export const roles: AgentRecord[] = [
 export const useWorkspace = create<WorkspaceState>((set) => ({
   status: { nodes: [], run: null, modelReady: false },
   connected: false,
+  archive: null,
+  setArchive: (archive) => set({ archive, selectedAgent: null }),
   selectedAgent: null,
   media: 'token',
   busy: false,
@@ -37,3 +41,6 @@ export const useWorkspace = create<WorkspaceState>((set) => ({
   setBusy: (busy) => set({ busy }),
   setError: (error) => set({ error }),
 }));
+
+/** Selected historical trace, or the real active/latest run from the coordinator. */
+export const useRun = () => useWorkspace(state => state.archive ?? state.status.run);

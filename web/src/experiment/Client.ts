@@ -1,4 +1,4 @@
-import type { EventMessage, Media, StatusRecord } from './Model';
+import type { EventMessage, Media, RunRecord, StatusRecord } from './Model';
 
 async function checked<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => ({}));
@@ -8,6 +8,10 @@ async function checked<T>(response: Response): Promise<T> {
 
 export async function getStatus(): Promise<StatusRecord> {
   return checked(await fetch('/api/status'));
+}
+
+export async function getRun(id: string): Promise<RunRecord> {
+  return checked(await fetch(`/api/runs/${encodeURIComponent(id)}`));
 }
 
 export async function startRun(prompt: string, media: Media, expected?: string): Promise<void> {

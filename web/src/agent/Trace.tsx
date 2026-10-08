@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
 import { ArrowUpRight, BrainCircuit, CheckCircle2, Clock3, MessageSquareText, Sparkles } from 'lucide-react';
-import { roles, useWorkspace } from '../experiment/State';
+import { roles, useRun, useWorkspace } from '../experiment/State';
 import { OutputView } from './Output';
 
 export function AgentTrace() {
   const { status, selectedAgent, setAgent } = useWorkspace();
-  const run = status.run;
+  const run = useRun();
   const agents = run?.agents.length ? run.agents : roles;
   const selected = agents.find(agent => agent.id === selectedAgent) ?? null;
   const relevant = useMemo(() => (run?.events ?? []).filter(e => !selectedAgent || e.agent === selectedAgent || !e.agent), [run?.events, selectedAgent]);

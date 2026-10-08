@@ -1,11 +1,10 @@
 import { ArrowUpRight, Clock3, Database, Network, Radio } from 'lucide-react';
-import { useWorkspace } from '../experiment/State';
+import { useRun } from '../experiment/State';
 
 function bytes(value: number) { return value >= 1048576 ? `${(value / 1048576).toFixed(2)} MiB` : value >= 1024 ? `${(value / 1024).toFixed(1)} KiB` : `${value} B`; }
 
 export function MetricStrip() {
-  const { status } = useWorkspace();
-  const run = status.run;
+  const run = useRun();
   const completed = run?.transfers.filter(t => t.durationMs != null) ?? [];
   const elapsed = run?.finishedAt ? new Date(run.finishedAt).getTime() - new Date(run.startedAt).getTime() : null;
   const totalBytes = run?.transfers.reduce((sum, t) => sum + t.bytes, 0) ?? 0;

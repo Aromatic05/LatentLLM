@@ -5,8 +5,9 @@ import { AgentTrace } from './agent/Trace';
 import { OutputView } from './agent/Output';
 import { ExperimentPanel } from './experiment/Panel';
 import { ComparePanel } from './experiment/Compare';
+import { ExperimentHistory } from './experiment/History';
 import { getStatus, watchStatus } from './experiment/Client';
-import { useWorkspace } from './experiment/State';
+import { useRun, useWorkspace } from './experiment/State';
 import { TransferPanel } from './transfer/Panel';
 import { LatencyChart } from './telemetry/Chart';
 import { MetricStrip } from './telemetry/Metric';
@@ -18,7 +19,7 @@ export default function App() {
     getStatus().then(setStatus).catch(() => setConnected(false));
     return watchStatus(message => setStatus(message.status), setConnected);
   }, [setStatus, setConnected]);
-  const run = status.run;
+  const run = useRun();
   const sameHost = status.nodes.length > 1 && status.nodes.every(n => n.online && n.host === status.nodes[0].host);
   return <div className="app-shell">
     <aside className="sidebar"><ExperimentPanel /></aside>
@@ -29,6 +30,7 @@ export default function App() {
       <div className="dashboard">
         <div className="dashboard-title"><div><div className="eyebrow"><span className="tiny-square"/> DISTRIBUTED REASONING SYSTEM <span className="eyebrow-line"/></div><h1>通信实验工作台 <span> / Overview</span></h1><p>实时观察多智能体之间的 Token 与 KV-Cache 通信、推理流程和传输性能。{sameHost && <span className="deployment-label">当前：同机双进程 / LOOPBACK</span>}</p></div>
           <div className={`run-status ${run?.status || 'idle'}`}><Activity size={17}/><div><span>EXPERIMENT STATUS</span><strong>{run ? (run.replayed ? 'ARCHIVED' : ({running:'RUNNING', completed:'COMPLETED',failed:'FAILED'}[run.status])) : 'STANDBY'}</strong></div><ArrowUpRight size={14}/></div></div>
+        <ExperimentHistory/>
         <MetricStrip/>
         <div className="section-bar"><span><Network size={14}/> SYSTEM OVERVIEW</span><span>REAL-TIME OBSERVABILITY <CircleDot size={12}/></span></div>
         <div className="upper-grid"><AgentGraph/><AgentTrace/></div>

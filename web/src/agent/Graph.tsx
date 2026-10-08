@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { ReactFlow, Background, BackgroundVariant, MarkerType, type Edge } from '@xyflow/react';
 import { Activity, Expand, Network } from 'lucide-react';
 import { AgentCard, type AgentNode } from './Node';
-import { roles, useWorkspace } from '../experiment/State';
+import { roles, useRun, useWorkspace } from '../experiment/State';
 
 const nodeTypes = { agent: AgentCard };
 const positions = [
@@ -11,8 +11,9 @@ const positions = [
 
 export function AgentGraph() {
   const { status, connected, selectedAgent, setAgent } = useWorkspace();
-  const agents = status.run?.agents.length ? status.run.agents : roles;
-  const transfers = status.run?.transfers ?? [];
+  const run = useRun();
+  const agents = run?.agents.length ? run.agents : roles;
+  const transfers = run?.transfers ?? [];
   const nodes = useMemo<AgentNode[]>(() => agents.map((agent, index) => ({
     id: agent.id, type: 'agent', position: positions[index] || { x: 12 + 248 * index, y: 88 },
     data: { agent, connected, selected: selectedAgent === agent.id },
@@ -38,7 +39,7 @@ export function AgentGraph() {
     <section className="panel graph-panel" id="topology">
       <div className="panel-header">
         <div><div className="panel-kicker"><Network size={13} /> DISTRIBUTED TOPOLOGY</div><h2>Agent 网络拓扑</h2></div>
-        <div className="panel-header-extra"><span className="micro-label"><Activity size={12} /> {status.run?.replayed ? 'ARCHIVED WORKFLOW' : status.run ? (status.run.status === 'running' ? 'LIVE WORKFLOW' : 'COMPLETED WORKFLOW') : 'PLANNED WORKFLOW'}</span><Expand size={15} /></div>
+        <div className="panel-header-extra"><span className="micro-label"><Activity size={12} /> {run?.replayed ? 'ARCHIVED WORKFLOW' : run ? (run.status === 'running' ? 'LIVE WORKFLOW' : 'COMPLETED WORKFLOW') : 'PLANNED WORKFLOW'}</span><Expand size={15} /></div>
       </div>
       <div className="topology-meta">
         <span><i className="key-dot mint" /> Token Channel</span>
@@ -52,7 +53,7 @@ export function AgentGraph() {
           <Background color="#27374a" gap={20} size={1} variant={BackgroundVariant.Dots} />
         </ReactFlow>
       </div>
-      <div className="graph-footer"><span><span className="ping" /> {status.run ? '同步运行事件' : '等待启动实验'}</span><span>点击节点检查 Agent 状态 <span className="arrow">↗</span></span></div>
+      <div className="graph-footer"><span><span className="ping" /> {run?.replayed ? '正在查看归档事件' : run ? '同步运行事件' : '等待启动实验'}</span><span>点击节点检查 Agent 状态 <span className="arrow">↗</span></span></div>
     </section>
   );
 }

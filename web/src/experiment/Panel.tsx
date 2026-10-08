@@ -10,7 +10,7 @@ const sampleTasks = [
 ];
 
 export function ExperimentPanel() {
-  const { status, connected, media, setMedia, busy, setBusy, error, setError } = useWorkspace();
+  const { status, connected, media, setMedia, busy, setBusy, error, setError, setArchive } = useWorkspace();
   const [prompt, setPrompt] = useState(sampleTasks[0].prompt);
   const [expected, setExpected] = useState(sampleTasks[0].expected);
   const run = status.run;
@@ -20,7 +20,7 @@ export function ExperimentPanel() {
     if (busy || active || !prompt.trim()) return;
     setError(null);
     setBusy(true);
-    try { await startRun(prompt.trim(), media, expected.trim()); }
+    try { await startRun(prompt.trim(), media, expected.trim()); setArchive(null); }
     catch (cause) { setError(cause instanceof Error ? cause.message : '实验启动失败'); }
     finally { setBusy(false); }
   }

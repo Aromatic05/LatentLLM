@@ -1,12 +1,13 @@
 import ReactECharts from 'echarts-for-react';
 import { Activity, Layers3 } from 'lucide-react';
-import { useWorkspace } from '../experiment/State';
+import { useRun } from '../experiment/State';
 import type { AgentRecord } from '../experiment/Model';
 
 const EMPTY_AGENTS: AgentRecord[] = [];
 
 export function StageChart() {
-  const agents = useWorkspace(state => state.status.run?.agents ?? EMPTY_AGENTS);
+  const run = useRun();
+  const agents = run?.agents ?? EMPTY_AGENTS;
   const measured = agents.filter(agent => agent.durationMs !== undefined);
   const stages = [
     { label: '恢复 · Restore', name: 'restoreMs', color: '#56a9ed' },
