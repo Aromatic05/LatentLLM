@@ -3,13 +3,25 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from latentllm.experiment.run import Experiment, boxed_answer
+from latentllm.experiment.run import Experiment
+from latentllm.experiment.answer import extract_answer, equivalent_answer
 
 
 class ExperimentTests(unittest.TestCase):
     def test_answer_uses_visible_boxed_result_only(self):
-        self.assertEqual(boxed_answer(r'<think>Wrong: \boxed{29}</think>\boxed{47}'), '47')
-        self.assertIsNone(boxed_answer(r'<think>\boxed{47}</think>Original plan without final answer'))
+        self.assertEqual(extract_answer(r'<think>Wrong: \boxed{29}</think>\boxed{47}'), '47')
+        self.assertIsNone(extract_answer(r'<think>\boxed{47}</think>Original plan without final answer'))
+
+    def test_answer_from_explicit_final_phrase(self):
+        output = '中间运算得到 58，但是不符合约束。最终正确的答案应该是47。'
+        self.assertEqual(extract_answer(output), '47')
+        self.assertEqual(extract_answer('The final answer is 47.'), '47')
+        self.assertEqual(extract_answer('最终答案：47。'), '47')
+        self.assertTrue(equivalent_answer('47.0', '47'))
+
+    def test_ambiguous_numbers_are_not_scored(self):
+        self.assertIsNone(extract_answer('前面有两个数字 11 与 27，得出差为 3。'))
+        self.assertIsNone(extract_answer(r'<think>\boxed{47}</think>过程是 11 - 3 = 8。'))
 
     def test_finished_run_can_be_reloaded(self):
         with TemporaryDirectory() as temporary:

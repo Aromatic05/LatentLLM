@@ -3,23 +3,17 @@ from __future__ import annotations
 
 import asyncio
 import json
-import re
 import time
 import uuid
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any
 
+from latentllm.experiment.answer import equivalent_answer, extract_answer
 from latentllm.transport.client import Client
 from latentllm.transport.schema import model
 
 ROLES = ('planner', 'critic', 'refiner', 'judger')
-
-
-def boxed_answer(output: str) -> str | None:
-    visible = output.rsplit('</think>', 1)[-1] if '</think>' in output else ('' if output.lstrip().startswith('<think>') else output)
-    answers = re.findall(r'\\boxed\{([^{}]+)\}', visible)
-    return answers[-1].strip() if answers else None
 
 
 def utcnow() -> str:
@@ -35,6 +29,7 @@ class Experiment:
             try:
                 record = json.loads(path.read_text(encoding='utf-8'))
                 if record.get('status') in ('completed', 'failed'):
+                    self.evaluate(record)
                     self.history.append(record)
             except (ValueError, OSError):
                 continue
@@ -51,6 +46,13 @@ class Experiment:
     def snapshot(self) -> dict:
         return {'type': 'snapshot', 'status': {'nodes': self.nodes, 'run': self.run, 'modelReady': self.model_ready,
                                                 'history': [self.summary(run) for run in reversed(self.history)]}}
+
+    @staticmethod
+    def evaluate(run: dict[str, Any]) -> None:
+        if run.get('expected'):
+            run['prediction'] = extract_answer(run.get('answer', ''))
+            run['correct'] = (equivalent_answer(run['prediction'], run['expected'])
+                              if run['prediction'] is not None else None)
 
     @staticmethod
     def summary(run: dict[str, Any]) -> dict[str, Any]:
@@ -175,9 +177,10 @@ class Experiment:
                 if index == len(ROLES) - 1:
                     run['answer'] = result.output
                     if run['expected']:
-                        run['prediction'] = boxed_answer(result.output)
-                        run['correct'] = run['prediction'] == run['expected']
-                        state = '正确' if run['correct'] else ('未找到有效 boxed 答案' if not run['prediction'] else '与参考答案不一致')
+                        self.evaluate(run)
+                        state = ('正确' if run['correct'] is True else
+                                 '与参考答案不一致' if run['correct'] is False else
+                                 '未能可靠提取最终答案（未评分）')
                         self.emit('answer.evaluated', f'答案校验：{state}；参考答案 {run["expected"]}，提取结果 {run["prediction"] or "无"}', agent=role)
                     continue
                 target = ROLES[index + 1]
