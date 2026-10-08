@@ -65,6 +65,10 @@ message StepReply {
   double duration_ms = 4;
   bool success = 5;
   string error = 6;
+  double restore_ms = 7;
+  double inference_ms = 8;
+  double encode_ms = 9;
+  uint32 latent_steps = 10;
 }
 
 message ForwardRequest {
@@ -79,6 +83,7 @@ message ForwardReply {
   Media media = 3;
   uint64 positions = 4;
   uint64 tensors = 5;
+  double send_ms = 6;
 }
 
 service Node {
