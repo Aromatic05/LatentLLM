@@ -38,7 +38,7 @@ export default function App() {
         <StageChart/>
         <div className="section-bar second"><span><Activity size={14}/> EXPERIMENT COMPARISON</span><span>SAME TASK, TWO MEDIA <Clock3 size={12}/></span></div>
         <ComparePanel/>
-        {run && <section className="result-panel"><div><ShieldCheck size={17} /> TASK RESULT <span>· {run.id.slice(0,8)}</span>{run.correct != null && <span className={`answer-grade ${run.correct ? 'correct' : 'incorrect'}`}>{run.correct ? 'ANSWER MATCHED' : 'ANSWER MISMATCH'}</span>}</div><div className="result-content">{run.answer ? <OutputView output={run.answer}/> : (run.error || '智能体正在求解，尚未产生最终输出。')}</div></section>}
+        {run && <section className="result-panel"><div><ShieldCheck size={17} /> TASK RESULT <span>· {run.id.slice(0,8)}</span>{run.expected && <span className={`answer-grade ${run.correct === true ? 'correct' : run.correct === false ? 'incorrect' : 'unparsed'}`}>{run.correct === true ? 'ANSWER MATCHED' : run.correct === false ? 'ANSWER MISMATCH' : 'ANSWER UNPARSED'} · {run.prediction || '无提取值'} / {run.expected}</span>}</div><div className="result-content">{run.answer ? <OutputView output={run.answer}/> : (run.error || '智能体正在求解，尚未产生最终输出。')}</div></section>}
         <footer className="page-footer"><span>© LATENTLLM RESEARCH LAB <span className="footer-separator">/</span> POWERED BY LATENTMAS</span><span><span className="footer-circle"/> OBSERVED DATA ONLY <span className="footer-separator">/</span> {new Date().getFullYear()}</span></footer>
       </div>
     </main>
