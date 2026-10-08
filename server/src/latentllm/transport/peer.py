@@ -70,7 +70,8 @@ class Peer(service.NodeServicer):
             return model.StepReply(error='Missing input from previous agent')
         try:
             result, header, data = await asyncio.to_thread(self.runner.step, request, incoming)
-            self.outgoing[request.run_id] = (header, data)
+            if request.role != 'judger':
+                self.outgoing[request.run_id] = (header, data)
             return model.StepReply(**result, success=True)
         except Exception as exc:
             return model.StepReply(error=f'{type(exc).__name__}: {exc}')
@@ -97,6 +98,8 @@ class Peer(service.NodeServicer):
         send_ms = (time.perf_counter_ns() - started) / 1e6
         if not receipt.accepted:
             await context.abort(grpc.StatusCode.DATA_LOSS, receipt.reason or 'Peer rejected transfer')
+        # The receiver has acknowledged a valid copy; release the large KV buffer.
+        self.outgoing.pop(request.run_id, None)
         return model.ForwardReply(receipt=receipt, media=header.media, size=len(payload), positions=header.positions, tensors=len(header.tensors), send_ms=send_ms)
 
 
