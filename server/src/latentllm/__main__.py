@@ -12,7 +12,7 @@ from latentllm.web.app import create_app
 
 
 async def start(args: argparse.Namespace) -> None:
-    runtime = Runtime(args.model, args.device, latent_steps=args.latent_steps, max_tokens=args.max_tokens, judge_tokens=args.judge_tokens, judge_thinking=args.judge_thinking)
+    runtime = Runtime(args.model, args.device, latent_steps=args.latent_steps, max_tokens=args.max_tokens, judge_tokens=args.judge_tokens, judge_thinking=not args.judge_no_think)
     peer = Peer(args.node, runtime)
     grpc_server = await serve(peer, args.bind)
     print(f'LatentLLM peer {args.node} bound to {args.bind}', flush=True)
@@ -45,7 +45,7 @@ def main() -> None:
     parser.add_argument('--latent-steps', type=int, default=8)
     parser.add_argument('--max-tokens', type=int, default=512)
     parser.add_argument('--judge-tokens', type=int, default=768, help='Generation budget for final answer, independent of intermediate agents')
-    parser.add_argument('--judge-thinking', action='store_true', help='Use the original Qwen3 thinking chat template for the final agent')
+    parser.add_argument('--judge-no-think', action='store_true', help='Use Qwen3 non-thinking chat template for the final agent (experimental)')
     parser.add_argument('--api', action='store_true', help='Serve FastAPI on the coordinator node')
     parser.add_argument('--local', default='127.0.0.1:50051', help='PC A gRPC address')
     parser.add_argument('--peer', default='127.0.0.1:50052', help='PC B gRPC address')
