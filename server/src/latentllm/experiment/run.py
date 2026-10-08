@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import time
 import uuid
 from pathlib import Path
@@ -13,6 +14,12 @@ from latentllm.transport.client import Client
 from latentllm.transport.schema import model
 
 ROLES = ('planner', 'critic', 'refiner', 'judger')
+
+
+def boxed_answer(output: str) -> str | None:
+    visible = output.rsplit('</think>', 1)[-1] if '</think>' in output else ('' if output.lstrip().startswith('<think>') else output)
+    answers = re.findall(r'\\boxed\{([^{}]+)\}', visible)
+    return answers[-1].strip() if answers else None
 
 
 def utcnow() -> str:
@@ -53,7 +60,8 @@ class Experiment:
             'id': run['id'], 'prompt': run['prompt'], 'media': run['media'], 'status': run['status'],
             'durationMs': (finished - started).total_seconds() * 1000,
             'bytes': sum(transfer.get('bytes', 0) for transfer in run['transfers']),
-            'answer': run.get('answer'),
+            'answer': run.get('answer'), 'expected': run.get('expected'),
+            'prediction': run.get('prediction'), 'correct': run.get('correct'),
         }
 
     def archive(self, run: dict[str, Any]) -> None:
@@ -111,7 +119,7 @@ class Experiment:
         self.run['events'].append(event)
         self.publish()
 
-    async def start(self, prompt: str, media: str) -> str:
+    async def start(self, prompt: str, media: str, expected: str | None = None) -> str:
         async with self.lock:
             if self.run and self.run['status'] == 'running':
                 raise ValueError('Another experiment is running')
@@ -121,7 +129,7 @@ class Experiment:
                 raise ValueError('Unsupported media')
             run_id = str(uuid.uuid4())
             self.run = {
-                'id': run_id, 'prompt': prompt, 'media': media, 'status': 'running',
+                'id': run_id, 'prompt': prompt, 'media': media, 'expected': expected.strip() if expected else None, 'status': 'running',
                 'startedAt': utcnow(), 'agents': [
                     {'id': role, 'role': role.title(), 'node': f'node-{"a" if i % 2 == 0 else "b"}', 'status': 'pending'}
                     for i, role in enumerate(ROLES)],
@@ -166,6 +174,11 @@ class Experiment:
                 self.emit('agent.completed', message, agent=role, duration=result.duration_ms)
                 if index == len(ROLES) - 1:
                     run['answer'] = result.output
+                    if run['expected']:
+                        run['prediction'] = boxed_answer(result.output)
+                        run['correct'] = run['prediction'] == run['expected']
+                        state = '正确' if run['correct'] else ('未找到有效 boxed 答案' if not run['prediction'] else '与参考答案不一致')
+                        self.emit('answer.evaluated', f'答案校验：{state}；参考答案 {run["expected"]}，提取结果 {run["prediction"] or "无"}', agent=role)
                     continue
                 target = ROLES[index + 1]
                 transfer = {'id': str(uuid.uuid4()), 'source': role, 'target': target,
