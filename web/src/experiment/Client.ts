@@ -10,11 +10,11 @@ export async function getStatus(): Promise<StatusRecord> {
   return checked(await fetch('/api/status'));
 }
 
-export async function startRun(prompt: string, media: Media): Promise<void> {
+export async function startRun(prompt: string, media: Media, expected?: string): Promise<void> {
   await checked(await fetch('/api/runs', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ prompt, media }),
+    body: JSON.stringify({ prompt, media, expected: expected || null }),
   }));
 }
 

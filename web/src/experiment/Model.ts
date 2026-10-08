@@ -47,10 +47,6 @@ export interface EventRecord {
   agent?: string;
   message: string;
   durationMs?: number;
-  restoreMs?: number;
-  inferenceMs?: number;
-  encodeMs?: number;
-  cachePositions?: number;
 }
 
 export interface RunRecord {
@@ -65,6 +61,9 @@ export interface RunRecord {
   events: EventRecord[];
   answer?: string;
   error?: string;
+  expected?: string | null;
+  prediction?: string | null;
+  correct?: boolean | null;
 }
 
 export interface RunSummary {
@@ -75,6 +74,9 @@ export interface RunSummary {
   durationMs: number;
   bytes: number;
   answer?: string;
+  expected?: string | null;
+  prediction?: string | null;
+  correct?: boolean | null;
 }
 
 export interface StatusRecord {

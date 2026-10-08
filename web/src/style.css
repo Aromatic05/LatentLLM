@@ -12,3 +12,5 @@
 .trace-panel{min-height:0}
 .trace-scroll{height:auto;min-height:0;flex:1;overflow-y:auto}
 @media(max-width:760px){.upper-grid>.panel{height:410px}}
+.expected-input{width:100%;background:#101c2a;color:#dce7f5;border:1px solid #28384e;border-radius:8px;padding:9px 11px;font-size:11.5px;margin-bottom:20px;outline:none}.expected-input:focus{border-color:#478e8b;box-shadow:0 0 0 3px rgba(49,180,157,.1)}.expected-input::placeholder{color:#70839a}.sample-tasks{margin-bottom:17px}
+.comparison-status.incorrect,.answer-grade.incorrect{color:#f3a69f}.answer-grade{margin-left:auto;color:#83eccb!important;letter-spacing:.6px;font-size:9px}.answer-grade.incorrect{color:#f3a69f!important}

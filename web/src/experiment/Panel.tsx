@@ -5,13 +5,14 @@ import { useWorkspace } from './State';
 import type { Media } from './Model';
 
 const sampleTasks = [
-  { label: '数学推理', prompt: '有一个两位数，十位数字与个位数字之和为 11，交换数字后得到的数比原数大 27。求原来的两位数。' },
-  { label: '逻辑验证', prompt: '三个人 A、B、C 中只有一个人说真话。A 说 B 说谎，B 说 C 说谎，C 说 A 和 B 都说谎。谁说真话？请逐步验证。' },
+  { label: '数学推理', prompt: '有一个两位数，十位数字与个位数字之和为 11，交换数字后得到的数比原数大 27。求原来的两位数。', expected: '47' },
+  { label: '逻辑验证', prompt: '三个人 A、B、C 中只有一个人说真话。A 说 B 说谎，B 说 C 说谎，C 说 A 和 B 都说谎。谁说真话？请逐步验证。', expected: 'B' },
 ];
 
 export function ExperimentPanel() {
   const { status, connected, media, setMedia, busy, setBusy, error, setError } = useWorkspace();
   const [prompt, setPrompt] = useState(sampleTasks[0].prompt);
+  const [expected, setExpected] = useState(sampleTasks[0].expected);
   const run = status.run;
   const active = run?.status === 'running';
   async function submit(event: React.FormEvent) {
@@ -19,7 +20,7 @@ export function ExperimentPanel() {
     if (busy || active || !prompt.trim()) return;
     setError(null);
     setBusy(true);
-    try { await startRun(prompt.trim(), media); }
+    try { await startRun(prompt.trim(), media, expected.trim()); }
     catch (cause) { setError(cause instanceof Error ? cause.message : '实验启动失败'); }
     finally { setBusy(false); }
   }
@@ -29,8 +30,10 @@ export function ExperimentPanel() {
     <div className="side-caption"><FlaskConical size={14} /> EXPERIMENT CONTROL <span>01 / 02</span></div>
     <form onSubmit={submit} className="experiment-form">
       <label className="form-label" htmlFor="experiment-prompt">任务输入 <span>INPUT PROMPT</span></label>
-      <textarea id="experiment-prompt" value={prompt} onChange={event => setPrompt(event.target.value)} rows={6} spellCheck={false} placeholder="输入一个需要多个 Agent 讨论的任务…" />
-      <div className="sample-tasks">{sampleTasks.map(task => <button key={task.label} type="button" onClick={() => setPrompt(task.prompt)}>{task.label}<ArrowRight size={11} /></button>)}</div>
+      <textarea id="experiment-prompt" value={prompt} onChange={event => { setPrompt(event.target.value); setExpected(''); }} rows={6} spellCheck={false} placeholder="输入一个需要多个 Agent 讨论的任务…" />
+      <div className="sample-tasks">{sampleTasks.map(task => <button key={task.label} type="button" onClick={() => { setPrompt(task.prompt); setExpected(task.expected); }}>{task.label}<ArrowRight size={11} /></button>)}</div>
+      <label className="form-label" htmlFor="expected-answer">参考答案（可选） <span>EVALUATION TARGET</span></label>
+      <input id="expected-answer" className="expected-input" value={expected} onChange={event => setExpected(event.target.value)} placeholder="仅提供时评价答案正确性" />
       <label className="form-label" id="media-label">通信方式 <span>TRANSFER MEDIA</span></label>
       <div className="mode-switch" role="group" aria-labelledby="media-label">{([{ value: 'token', title: 'Token', desc: '文本 / IDs', icon: Terminal }, { value: 'kv', title: 'KV-Cache', desc: '潜在状态', icon: Layers3 }] as const).map(option => {
         const Icon = option.icon;
@@ -43,7 +46,7 @@ export function ExperimentPanel() {
     </form>
     <div className="side-divider" />
     <div className="side-caption"><RadioTower size={14} /> COMPUTE NODES <span>{status.nodes.filter(node => node.online).length} / {Math.max(2, status.nodes.length)}</span></div>
-    <div className="node-list">{(status.nodes.length ? status.nodes : [{id:'node-a',host:'PC A',online:false,model:null,device:null},{id:'node-b',host:'PC B',online:false,model:null,device:null}]).map((node,index) => <div className="node-item" key={node.id}><div className={`node-indicator ${node.online ? 'online' : ''}`}><Cpu size={16} /></div><div><strong>{node.host || `PC ${index === 0 ? 'A' : 'B'}`}</strong><small>{node.model || 'Model not configured'}</small></div><span className={`node-light ${node.online ? 'online' : ''}`} /></div>)}</div>
+    <div className="node-list">{(status.nodes.length ? status.nodes : [{id:'node-a',host:'PC A',online:false,model:null,device:null},{id:'node-b',host:'PC B',online:false,model:null,device:null}]).map((node,index) => <div className="node-item" key={node.id}><div className={`node-indicator ${node.online ? 'online' : ''}`}><Cpu size={16} /></div><div><strong>{node.id.toUpperCase()} · {node.host || `PC ${index === 0 ? 'A' : 'B'}`}</strong><small>{node.model || 'Model not configured'}</small></div><span className={`node-light ${node.online ? 'online' : ''}`} /></div>)}</div>
     <div className="sidebar-spacer" />
     <div className="side-tip"><Sparkles size={15} /><div><strong>真实传输 · 真实指标</strong><p>不使用模拟性能数据。所有图表均由实际推理和网络事件驱动。</p></div></div>
     <div className="sidebar-bottom"><span>LATENTLLM / LAB</span><span>v0.1.0</span></div>
