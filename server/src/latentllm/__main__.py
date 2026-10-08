@@ -42,7 +42,7 @@ def main() -> None:
     parser.add_argument('--bind', required=True, help='gRPC listener host:port')
     parser.add_argument('--model', default=os.environ.get('LATENTLLM_MODEL'), help='Qwen model name/path; omit to run in transport-only mode')
     parser.add_argument('--device', default='auto')
-    parser.add_argument('--latent-steps', type=int, default=8)
+    parser.add_argument('--latent-steps', type=int, default=10)
     parser.add_argument('--max-tokens', type=int, default=512)
     parser.add_argument('--judge-tokens', type=int, default=768, help='Generation budget for final answer, independent of intermediate agents')
     parser.add_argument('--judge-no-think', action='store_true', help='Use Qwen3 non-thinking chat template for the final agent (experimental)')

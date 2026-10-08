@@ -4,6 +4,8 @@ Real Token / KV-Cache communication between independent LLM processes, with a li
 
 The final Judger uses the upstream Qwen3 thinking template by default. You may try `--judge-no-think` on both nodes to shorten final generation, but this experimental switch can change task accuracy (the 0.6B model has produced incorrect answers under that option). The intermediate latent rollout is unchanged.
 
+The latent rollout defaults to 10 steps per role, matching the original LatentMAS implementation. The `--latent-steps` option permits controlled experiments, but comparisons must record this setting.
+
 The inference algorithms are adapted from [Gen-Verse/LatentMAS](https://github.com/Gen-Verse/LatentMAS), pinned as a Git submodule. This is a development laboratory, not a secure public multi-tenant service.
 
 ## Features

@@ -12,7 +12,7 @@ from latentllm.transport.schema import model as wire
 
 
 class Runtime:
-    def __init__(self, name: str | None, device: str = 'auto', *, latent_steps: int = 8,
+    def __init__(self, name: str | None, device: str = 'auto', *, latent_steps: int = 10,
                  max_tokens: int = 512, judge_tokens: int = 768, judge_thinking: bool = True):
         self.name = name or ''
         self.device = device
