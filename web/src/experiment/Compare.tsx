@@ -1,5 +1,6 @@
 import { ArrowLeftRight, CheckCircle2, Clock3, Database, FlaskConical } from 'lucide-react';
 import { useWorkspace } from './State';
+import { visibleOutput } from '../agent/Output';
 import type { Media, RunSummary } from './Model';
 
 function bytes(size: number) {
@@ -16,7 +17,7 @@ function ResultCard({ media, result }: { media: Media; result?: RunSummary }) {
       {result ? <span className="comparison-status"><CheckCircle2 size={12}/> EXECUTED</span> : <span className="comparison-status missing">NO EXPERIMENT</span>}</div>
     <div className="comparison-values"><div><span>端到端总耗时</span><strong>{result ? (result.durationMs / 1000).toFixed(2) : '—'} <small>s</small></strong></div>
       <div><span>累计传输数据量</span><strong>{result ? bytes(result.bytes) : '—'}</strong></div></div>
-    <div className="comparison-answer"><span>最终答案</span><p>{result?.answer ? result.answer.replace(/<think>[\s\S]*?<\/think>/g, '').trim().slice(-400) : '尚未对当前任务运行此通信模式。'}</p></div>
+    <div className="comparison-answer"><span>最终答案</span><p>{result?.answer ? (visibleOutput(result.answer) || '(最终输出缺少可读答案)').slice(-400) : '尚未对当前任务运行此通信模式。'}</p></div>
   </div>;
 }
 
