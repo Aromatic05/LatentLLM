@@ -3,6 +3,7 @@ import { Activity, ArrowUpRight, CircleDot, Clock3, Github, LayoutDashboard, Net
 import { AgentGraph } from './agent/Graph';
 import { AgentTrace } from './agent/Trace';
 import { ExperimentPanel } from './experiment/Panel';
+import { ComparePanel } from './experiment/Compare';
 import { getStatus, watchStatus } from './experiment/Client';
 import { useWorkspace } from './experiment/State';
 import { TransferPanel } from './transfer/Panel';
@@ -34,6 +35,8 @@ export default function App() {
         <div className="lower-grid"><TransferPanel/><LatencyChart/></div>
         <div className="section-bar second"><span><Activity size={14}/> INFERENCE BREAKDOWN</span><span>SYNCHRONIZED GPU TIMINGS <Clock3 size={12}/></span></div>
         <StageChart/>
+        <div className="section-bar second"><span><Activity size={14}/> EXPERIMENT COMPARISON</span><span>SAME TASK, TWO MEDIA <Clock3 size={12}/></span></div>
+        <ComparePanel/>
         {run && <section className="result-panel"><div><ShieldCheck size={17} /> TASK RESULT <span>· {run.id.slice(0,8)}</span></div><p>{run.answer || run.error || '智能体正在求解，尚未产生最终输出。'}</p></section>}
         <footer className="page-footer"><span>© LATENTLLM RESEARCH LAB <span className="footer-separator">/</span> POWERED BY LATENTMAS</span><span><span className="footer-circle"/> OBSERVED DATA ONLY <span className="footer-separator">/</span> {new Date().getFullYear()}</span></footer>
       </div>

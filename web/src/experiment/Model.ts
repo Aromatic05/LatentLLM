@@ -67,10 +67,21 @@ export interface RunRecord {
   error?: string;
 }
 
+export interface RunSummary {
+  id: string;
+  prompt: string;
+  media: Media;
+  status: RunStatus;
+  durationMs: number;
+  bytes: number;
+  answer?: string;
+}
+
 export interface StatusRecord {
   nodes: NodeRecord[];
   run: RunRecord | null;
   modelReady: boolean;
+  history?: RunSummary[];
 }
 
 export interface EventMessage {
