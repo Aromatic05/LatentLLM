@@ -1,0 +1,89 @@
+syntax = "proto3";
+package latentllm;
+
+enum Media {
+  MEDIA_UNSPECIFIED = 0;
+  TOKEN = 1;
+  KV_CACHE = 2;
+}
+
+message Tensor {
+  string name = 1;
+  string dtype = 2;
+  repeated uint64 shape = 3;
+  uint64 offset = 4;
+  uint64 size = 5;
+}
+
+message Header {
+  string id = 1;
+  string run_id = 2;
+  string source = 3;
+  string target = 4;
+  string model = 5;
+  Media media = 6;
+  uint64 size = 7;
+  bytes sha256 = 8;
+  repeated Tensor tensors = 9;
+  uint64 tokens = 10;
+  uint64 positions = 11;
+}
+
+message Packet {
+  oneof part {
+    Header header = 1;
+    bytes chunk = 2;
+  }
+}
+
+message Receipt {
+  bool accepted = 1;
+  string reason = 2;
+  uint64 bytes = 3;
+  double duration_ms = 4;
+}
+
+message HealthRequest {}
+message HealthReply {
+  string id = 1;
+  string host = 2;
+  string model = 3;
+  string device = 4;
+  bool ready = 5;
+}
+
+message StepRequest {
+  string run_id = 1;
+  string role = 2;
+  string question = 3;
+  Media media = 4;
+}
+message StepReply {
+  string output = 1;
+  uint64 tokens = 2;
+  uint64 positions = 3;
+  double duration_ms = 4;
+  bool success = 5;
+  string error = 6;
+}
+
+message ForwardRequest {
+  string run_id = 1;
+  string source = 2;
+  string target = 3;
+  string address = 4;
+}
+message ForwardReply {
+  Receipt receipt = 1;
+  uint64 size = 2;
+  Media media = 3;
+  uint64 positions = 4;
+  uint64 tensors = 5;
+}
+
+service Node {
+  rpc Health(HealthRequest) returns (HealthReply);
+  rpc Transfer(stream Packet) returns (Receipt);
+  rpc Step(StepRequest) returns (StepReply);
+  rpc Forward(ForwardRequest) returns (ForwardReply);
+}
