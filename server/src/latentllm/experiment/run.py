@@ -117,8 +117,12 @@ class Experiment:
                 agent['durationMs'] = result.duration_ms
                 agent['outputTokens'] = result.tokens
                 agent['output'] = result.output
+                agent['restoreMs'] = result.restore_ms
+                agent['inferenceMs'] = result.inference_ms
+                agent['encodeMs'] = result.encode_ms
                 if run['media'] == 'kv' and role != 'judger':
-                    agent['latentSteps'] = max(0, result.positions)
+                    agent['latentSteps'] = result.latent_steps
+                    agent['cachePositions'] = result.positions
                 message = result.output[:900] if result.output else f'{role.title()} 完成潜在推理，缓存序列长度 {result.positions}，无可读中间文本'
                 self.emit('agent.completed', message, agent=role, duration=result.duration_ms)
                 if index == len(ROLES) - 1:
@@ -134,7 +138,7 @@ class Experiment:
                 elapsed = (time.perf_counter_ns() - start) / 1_000_000
                 if not receipt.receipt.accepted:
                     raise RuntimeError(f'Transfer to {target} was rejected')
-                transfer.update(bytes=receipt.size, durationMs=elapsed, status='completed', tensors=receipt.tensors, sequence=receipt.positions)
+                transfer.update(bytes=receipt.size, durationMs=elapsed, status='completed', tensors=receipt.tensors, sequence=receipt.positions, sendMs=receipt.send_ms, receiveMs=receipt.receipt.duration_ms)
                 self.emit('transfer.completed', f'{role.title()} → {target.title()}：完成 {receipt.size} B，{elapsed:.1f} ms', agent=role, duration=elapsed)
             run['status'] = 'completed'
             run['finishedAt'] = utcnow()

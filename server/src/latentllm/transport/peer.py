@@ -86,6 +86,7 @@ class Peer(service.NodeServicer):
         header.target = request.target
         header.size = len(payload)
         header.sha256 = hashlib.sha256(payload).digest()
+        started = time.perf_counter_ns()
         async with grpc.aio.insecure_channel(request.address, options=[('grpc.max_receive_message_length', CHUNK_SIZE * 2)]) as channel:
             stub = service.NodeStub(channel)
             async def packets():
@@ -93,9 +94,10 @@ class Peer(service.NodeServicer):
                 for offset in range(0, len(payload), CHUNK_SIZE):
                     yield model.Packet(chunk=payload[offset:offset + CHUNK_SIZE])
             receipt = await stub.Transfer(packets(), timeout=180)
+        send_ms = (time.perf_counter_ns() - started) / 1e6
         if not receipt.accepted:
             await context.abort(grpc.StatusCode.DATA_LOSS, receipt.reason or 'Peer rejected transfer')
-        return model.ForwardReply(receipt=receipt, media=header.media, size=len(payload), positions=header.positions, tensors=len(header.tensors))
+        return model.ForwardReply(receipt=receipt, media=header.media, size=len(payload), positions=header.positions, tensors=len(header.tensors), send_ms=send_ms)
 
 
 async def serve(peer: Peer, address: str) -> grpc.aio.Server:
