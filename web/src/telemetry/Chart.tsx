@@ -1,9 +1,12 @@
 import { BarChart3, TrendingUp } from 'lucide-react';
 import ReactECharts from 'echarts-for-react';
 import { useWorkspace } from '../experiment/State';
+import type { TransferRecord } from '../experiment/Model';
+
+const EMPTY_TRANSFERS: TransferRecord[] = [];
 
 export function LatencyChart() {
-  const transfers = useWorkspace(s => s.status.run?.transfers ?? []);
+  const transfers = useWorkspace(s => s.status.run?.transfers ?? EMPTY_TRANSFERS);
   const completed = transfers.filter(item => item.durationMs != null);
   const option = {
     animationDuration: 350,

@@ -54,7 +54,8 @@ class Experiment:
                 return {'id': f'node-{"a" if index == 0 else "b"}', 'host': address,
                         'online': False, 'model': None, 'device': None, '_ready': False}
         found = await asyncio.gather(probe(0), probe(1))
-        ready = all(node.pop('_ready') for node in found)
+        ready_flags = [node.pop('_ready') for node in found]
+        ready = all(ready_flags)
         if found != self.nodes or ready != self.model_ready:
             self.nodes = found
             self.model_ready = ready

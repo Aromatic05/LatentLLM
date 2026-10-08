@@ -1,10 +1,13 @@
 import { ArrowDownUp, ArrowRight, Box, Cable, Check, Clock3, LoaderCircle, PackageOpen } from 'lucide-react';
 import { useWorkspace } from '../experiment/State';
+import type { TransferRecord } from '../experiment/Model';
+
+const EMPTY_TRANSFERS: TransferRecord[] = [];
 
 function size(bytes: number) { return bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KiB` : `${(bytes / 1048576).toFixed(2)} MiB`; }
 
 export function TransferPanel() {
-  const transfers = useWorkspace(s => s.status.run?.transfers ?? []);
+  const transfers = useWorkspace(s => s.status.run?.transfers ?? EMPTY_TRANSFERS);
   return <section className="panel transfers-panel" id="transfers"><div className="panel-header"><div><div className="panel-kicker"><Cable size={13} /> CROSS-NODE COMMUNICATION</div><h2>通信链路</h2></div><span className="panel-counter">{transfers.length} TRANSFERS</span></div>
     <div className="transfer-column-label"><span>PATH / PAYLOAD</span><span>SIZE</span><span>LATENCY</span></div>
     <div className="transfer-scroll">{transfers.length ? transfers.map(transfer => <div className="transfer-row" key={transfer.id}>
