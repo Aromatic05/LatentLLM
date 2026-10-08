@@ -62,3 +62,5 @@ class ExperimentTests(unittest.TestCase):
             self.assertEqual(records[0]['answer'], '\\boxed{15}')
             self.assertEqual(records[0]['bytes'], 1536)
             self.assertEqual(records[0]['durationMs'], 2000)
+            self.assertEqual(loaded.snapshot()['status']['run']['id'], 'completed-demo')
+            self.assertIs(loaded.snapshot()['status']['run']['replayed'], True)

@@ -55,6 +55,7 @@ export interface RunRecord {
   media: Media;
   status: RunStatus;
   startedAt: string;
+  replayed?: boolean;
   finishedAt?: string;
   agents: AgentRecord[];
   transfers: TransferRecord[];

@@ -38,7 +38,8 @@ class Experiment:
             {'id': 'node-b', 'host': addresses[1], 'online': False, 'model': None, 'device': None},
         ]
         self.model_ready = False
-        self.run: dict[str, Any] | None = None
+        # Restore the last completed run as a read-only dashboard replay after restart.
+        self.run: dict[str, Any] | None = ({**self.history[-1], 'replayed': True} if self.history else None)
         self.subscribers: set[asyncio.Queue] = set()
         self.counter = 0
         self.lock = asyncio.Lock()

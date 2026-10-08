@@ -38,7 +38,7 @@ export function AgentGraph() {
     <section className="panel graph-panel" id="topology">
       <div className="panel-header">
         <div><div className="panel-kicker"><Network size={13} /> DISTRIBUTED TOPOLOGY</div><h2>Agent 网络拓扑</h2></div>
-        <div className="panel-header-extra"><span className="micro-label"><Activity size={12} /> {status.run ? 'LIVE WORKFLOW' : 'PLANNED WORKFLOW'}</span><Expand size={15} /></div>
+        <div className="panel-header-extra"><span className="micro-label"><Activity size={12} /> {status.run?.replayed ? 'ARCHIVED WORKFLOW' : status.run ? (status.run.status === 'running' ? 'LIVE WORKFLOW' : 'COMPLETED WORKFLOW') : 'PLANNED WORKFLOW'}</span><Expand size={15} /></div>
       </div>
       <div className="topology-meta">
         <span><i className="key-dot mint" /> Token Channel</span>

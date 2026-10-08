@@ -28,7 +28,7 @@ export default function App() {
       </header>
       <div className="dashboard">
         <div className="dashboard-title"><div><div className="eyebrow"><span className="tiny-square"/> DISTRIBUTED REASONING SYSTEM <span className="eyebrow-line"/></div><h1>通信实验工作台 <span> / Overview</span></h1><p>实时观察多智能体之间的 Token 与 KV-Cache 通信、推理流程和传输性能。{sameHost && <span className="deployment-label">当前：同机双进程 / LOOPBACK</span>}</p></div>
-          <div className={`run-status ${run?.status || 'idle'}`}><Activity size={17}/><div><span>EXPERIMENT STATUS</span><strong>{run ? ({running:'RUNNING', completed:'COMPLETED',failed:'FAILED'}[run.status]) : 'STANDBY'}</strong></div><ArrowUpRight size={14}/></div></div>
+          <div className={`run-status ${run?.status || 'idle'}`}><Activity size={17}/><div><span>EXPERIMENT STATUS</span><strong>{run ? (run.replayed ? 'ARCHIVED' : ({running:'RUNNING', completed:'COMPLETED',failed:'FAILED'}[run.status])) : 'STANDBY'}</strong></div><ArrowUpRight size={14}/></div></div>
         <MetricStrip/>
         <div className="section-bar"><span><Network size={14}/> SYSTEM OVERVIEW</span><span>REAL-TIME OBSERVABILITY <CircleDot size={12}/></span></div>
         <div className="upper-grid"><AgentGraph/><AgentTrace/></div>
