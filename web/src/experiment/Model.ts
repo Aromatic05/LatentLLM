@@ -20,6 +20,10 @@ export interface AgentRecord {
   outputTokens?: number;
   latentSteps?: number;
   durationMs?: number;
+  restoreMs?: number;
+  inferenceMs?: number;
+  encodeMs?: number;
+  cachePositions?: number;
 }
 
 export interface TransferRecord {
@@ -32,6 +36,8 @@ export interface TransferRecord {
   status: 'sending' | 'completed' | 'failed';
   sequence?: number;
   tensors?: number;
+  sendMs?: number;
+  receiveMs?: number;
 }
 
 export interface EventRecord {
@@ -41,6 +47,10 @@ export interface EventRecord {
   agent?: string;
   message: string;
   durationMs?: number;
+  restoreMs?: number;
+  inferenceMs?: number;
+  encodeMs?: number;
+  cachePositions?: number;
 }
 
 export interface RunRecord {

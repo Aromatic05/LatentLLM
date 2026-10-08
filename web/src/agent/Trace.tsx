@@ -19,8 +19,8 @@ export function AgentTrace() {
       </div>
       <div className="trace-scroll">
         {selected && <div className="selected-agent"><div className="selected-agent-title"><BrainCircuit size={15} /> {selected.role} <span className="selected-state">{selected.status.toUpperCase()}</span></div>
-          <div className="selected-agent-body">{selected.output || (selected.latentSteps ? `潜在推理：${selected.latentSteps} steps；没有生成可读讨论文本。` : '当前没有可读输出。')}</div>
-          {selected.durationMs !== undefined && <div className="selected-agent-meta"><Clock3 size={12} /> 推理 {selected.durationMs.toFixed(0)} ms</div>}
+          <div className="selected-agent-body">{selected.output || (selected.latentSteps ? `潜在推理：${selected.latentSteps} steps，缓存长度 ${selected.cachePositions ?? '—'}；没有生成可读讨论文本。` : '当前没有可读输出。')}</div>
+          {selected.durationMs !== undefined && <div className="selected-agent-meta"><Clock3 size={12} /> 总计 {selected.durationMs.toFixed(1)} ms；恢复 {(selected.restoreMs || 0).toFixed(1)} / 推理 {(selected.inferenceMs || 0).toFixed(1)} / 编码 {(selected.encodeMs || 0).toFixed(1)} ms</div>}
         </div>}
         {relevant.length === 0 ? <div className="empty-trace"><div className="empty-symbol"><Sparkles size={22} /></div><h3>等待智能体开始协作</h3><p>启动一个真实实验后，推理步骤和跨机消息将按发生顺序显示在这里。</p></div> :
           <div className="trace-list">{relevant.map(item => <div className="trace-entry" key={item.id}><div className="trace-rail"><span className="trace-bullet" /></div><div className="trace-entry-content"><div className="trace-entry-head"><span className="trace-kind">{item.kind.replaceAll('.', ' / ')}</span><time>{new Date(item.time).toLocaleTimeString('zh-CN', { hour12: false })}</time></div><p>{item.message}</p>{item.durationMs != null && <span className="trace-duration"><Clock3 size={11} /> {item.durationMs.toFixed(1)} ms</span>}</div></div>)}</div>}
