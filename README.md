@@ -47,7 +47,7 @@ Start the UI:
 pnpm --dir web dev
 ```
 
-Open `http://localhost:5173/`. The UI reports whether two nodes and their models are ready. Select Token or KV-Cache, input a task, and run both modes with the same prompt to compare results. The Python coordinator API is at `http://127.0.0.1:8000/api/status`; Vite proxies `/api` in development.
+Open `http://localhost:5173/`. The UI reports whether two nodes and their models are ready. Select Token or KV-Cache, input a task, and run both modes with the same prompt to compare results. Enter an optional expected answer to evaluate the final visible `\boxed{...}` result; a completed workflow is **not** treated as a correct solution when the box is absent or wrong. The Python coordinator API is at `http://127.0.0.1:8000/api/status`; Vite proxies `/api` in development.
 
 For two physical PCs, bind the compute gRPC nodes to a reachable IP and provide reachable `--local` / `--peer` addresses. Never expose unauthenticated gRPC inference services to the public internet.
 
