@@ -11,7 +11,9 @@ _MARKER = re.compile(
     r'(?:最终(?:的)?|正确(?:的)?|标准)?答案\s*(?:应该|应当|应)?\s*(?:是|为|[:：=])'
     r'|(?:the\s+)?(?:final\s+|correct\s+)?answer\s*(?:is|equals|should\s+be|[:=])'
     r'|final\s+result\s*(?:is|equals|[:=])'
-    r')\s*\$?\s*' + _NUMBER + r'(?!\d|\.\d)',
+    r'|(?:the\s+)?original\s+(?:two-digit\s+)?number\s*(?:is|equals)'
+    r'|(?:原来的两位数|原数)\s*(?:应该|应当|应)?\s*(?:是|为)'
+    r')\s*\$?\s*' + _NUMBER + r'(?![\da-z]|\.\d)',
     re.IGNORECASE,
 )
 _BARE = re.compile(r'^\s*\$?\s*' + _NUMBER + r'\s*\$?\s*[.。!！]?\s*$')

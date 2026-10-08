@@ -17,10 +17,13 @@ class ExperimentTests(unittest.TestCase):
         self.assertEqual(extract_answer(output), '47')
         self.assertEqual(extract_answer('The final answer is 47.'), '47')
         self.assertEqual(extract_answer('最终答案：47。'), '47')
+        self.assertEqual(extract_answer('The equations confirm the original number is $47$.'), '47')
+        self.assertEqual(extract_answer('原来的两位数是47。'), '47')
         self.assertTrue(equivalent_answer('47.0', '47'))
 
     def test_ambiguous_numbers_are_not_scored(self):
         self.assertIsNone(extract_answer('前面有两个数字 11 与 27，得出差为 3。'))
+        self.assertIsNone(extract_answer('原来的两位数是10a + b，十位为 a。'))
         self.assertIsNone(extract_answer(r'<think>\boxed{47}</think>过程是 11 - 3 = 8。'))
 
     def test_past_experiment_is_regraded_when_loaded(self):
