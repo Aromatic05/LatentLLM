@@ -28,6 +28,29 @@ class TransportTests(unittest.TestCase):
             for source, target in zip(before, after):
                 self.assertTrue(torch.equal(source, target))
 
+    def test_corrupt_network_payload_is_rejected(self):
+        async def execute():
+            import socket
+            from latentllm.transport.schema import service
+            with socket.socket() as sock:
+                sock.bind(('127.0.0.1', 0))
+                address = f'127.0.0.1:{sock.getsockname()[1]}'
+            server = await serve(Peer('node-b'), address)
+            try:
+                async with grpc.aio.insecure_channel(address) as channel:
+                    stream = service.NodeStub(channel).Transfer
+                    async def payload():
+                        yield model.Packet(header=model.Header(
+                            run_id='corrupted-run', source='planner', target='critic',
+                            size=4, sha256=hashlib.sha256(b'good').digest()))
+                        yield model.Packet(chunk=b'bad!')
+                    with self.assertRaises(grpc.aio.AioRpcError) as caught:
+                        await stream(payload())
+                    self.assertEqual(caught.exception.code(), grpc.StatusCode.DATA_LOSS)
+            finally:
+                await server.stop(grace=0)
+        asyncio.run(execute())
+
     def test_loopback_streaming(self):
         async def execute():
             a, b = Peer('node-a'), Peer('node-b')
