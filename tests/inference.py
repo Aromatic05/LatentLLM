@@ -8,7 +8,7 @@ import unittest
 
 import grpc
 import torch
-from transformers import Qwen3Config, Qwen3ForCausalLM
+from transformers import LlamaConfig, LlamaForCausalLM, Qwen3Config, Qwen3ForCausalLM
 
 from latentllm.transport.codec import decode_cache, encode_cache
 from latentllm.transport.peer import Peer, serve
@@ -17,13 +17,21 @@ from latentllm.transport.schema import model as wire, service
 
 class InferenceTests(unittest.TestCase):
     def test_received_kv_continues_with_identical_logits(self):
-        config = Qwen3Config(
+        for family, config_type, model_type in (
+            ('qwen', Qwen3Config, Qwen3ForCausalLM),
+            ('llama', LlamaConfig, LlamaForCausalLM),
+        ):
+            with self.subTest(model=family):
+                self.check_continuation(family, config_type, model_type)
+
+    def check_continuation(self, family, config_type, model_type):
+        config = config_type(
             vocab_size=64, hidden_size=64, intermediate_size=128,
             num_hidden_layers=2, num_attention_heads=4, num_key_value_heads=2,
             head_dim=16, max_position_embeddings=128,
         )
         torch.manual_seed(42)
-        model = Qwen3ForCausalLM(config).eval()
+        model = model_type(config).eval()
         with torch.no_grad():
             prefix = model(input_ids=torch.tensor([[1, 7, 8, 12, 21]]), use_cache=True)
         raw, metadata, length = encode_cache(prefix.past_key_values)
@@ -39,7 +47,7 @@ class InferenceTests(unittest.TestCase):
                     async def chunks():
                         yield wire.Packet(header=wire.Header(
                             run_id='continuation', source='planner', target='critic',
-                            model='Qwen3-test', media=wire.KV_CACHE,
+                            model=f'{family}-test', media=wire.KV_CACHE,
                             size=len(raw), sha256=hashlib.sha256(raw).digest(),
                             tensors=metadata, positions=length,
                         ))

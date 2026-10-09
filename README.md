@@ -2,7 +2,7 @@
 
 Real Token / KV-Cache communication between independent LLM processes, with a live experiment dashboard.
 
-The final Judger uses the upstream Qwen3 thinking template by default. You may try `--judge-no-think` on both nodes to shorten final generation, but this experimental switch can change task accuracy (the 0.6B model has produced incorrect answers under that option). The intermediate latent rollout is unchanged.
+Role prompts are model-independent and are rendered through each model’s own chat template. The original LatentMAS repository hardcodes Qwen prompts; this project keeps its inference algorithm but replaces those prompts so the same Token/KV flow works with Qwen and Llama. This changes the prompt benchmark baseline and must be documented when reporting research results. `--judge-no-think` is an experimental Qwen3-specific generation option, not a generic model requirement.
 
 The latent rollout defaults to 10 steps per role, matching the original LatentMAS implementation. The `--latent-steps` option permits controlled experiments, but comparisons must record this setting.
 
@@ -69,7 +69,7 @@ PYTHONPATH=server/src server/.venv/bin/python -m unittest discover -s tests -p '
 pnpm --dir web build
 ```
 
-`tests/` checks externally observable Token ID roundtrips, real PyTorch KV tensor roundtrips, actual gRPC process-facing streaming behavior, archive grading, and continuation logits of a small real Qwen3 Transformer after a network KV handoff. Production inference is checked separately by running real Qwen model processes and reviewing actual outputs.
+`tests/` checks externally observable Token ID roundtrips, real PyTorch KV tensor roundtrips, actual gRPC process-facing streaming behavior, archive grading, and continuation logits of small real Qwen3 and Llama Transformers after network KV handoffs. Production inference is checked separately by running real Qwen model processes and reviewing actual outputs.
 
 ## Shared lab deployment (SYM)
 
