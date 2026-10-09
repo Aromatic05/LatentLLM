@@ -29,7 +29,7 @@ export function ExperimentHistory() {
       onChange={e => void select(e.target.value)}>
       <option value="">当前 / 最近一次</option>
       {history.map(item => <option value={item.id} key={item.id}>
-        {item.media.toUpperCase()} · {item.prompt.slice(0, 17)} · {item.correct === true ? '✓' : item.correct === false ? '✗' : item.expected ? '?' : '—'}
+        {item.media.toUpperCase()}{item.media === 'kv' ? (item.delta === false ? ' FULL' : ' Δ') : ''} · {item.prompt.slice(0, 17)} · {item.correct === true ? '✓' : item.correct === false ? '✗' : item.expected ? '?' : '—'}
       </option>)}
     </select>
     {busy ? <LoaderCircle className="spin" size={14}/> : <Clock3 size={13}/>}

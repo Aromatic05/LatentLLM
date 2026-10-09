@@ -14,11 +14,11 @@ export async function getRun(id: string): Promise<RunRecord> {
   return checked(await fetch(`/api/runs/${encodeURIComponent(id)}`));
 }
 
-export async function startRun(prompt: string, media: Media, expected?: string): Promise<void> {
+export async function startRun(prompt: string, media: Media, expected?: string, delta = true): Promise<void> {
   await checked(await fetch('/api/runs', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ prompt, media, expected: expected || null }),
+    body: JSON.stringify({ prompt, media, delta, expected: expected || null }),
   }));
 }
 

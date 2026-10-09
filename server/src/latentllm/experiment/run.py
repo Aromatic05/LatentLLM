@@ -63,6 +63,7 @@ class Experiment:
             'id': run['id'], 'prompt': run['prompt'], 'media': run['media'], 'status': run['status'],
             'durationMs': (finished - started).total_seconds() * 1000,
             'bytes': sum(transfer.get('bytes', 0) for transfer in run['transfers']),
+            'savedBytes': sum(transfer.get('savedBytes', 0) for transfer in run['transfers']),
             'answer': run.get('answer'), 'delta': run.get('delta', True), 'expected': run.get('expected'),
             'prediction': run.get('prediction'), 'correct': run.get('correct'),
         }

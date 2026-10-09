@@ -14,7 +14,7 @@ function ResultCard({ media, result }: { media: Media; result?: RunSummary }) {
   const label = !result ? 'NO EXPERIMENT' : !result.expected ? 'EXECUTED' : result.correct === true ? 'ANSWER MATCHED' : result.correct === false ? 'ANSWER MISMATCH' : 'ANSWER UNPARSED';
   return <div className={`comparison-card ${kv ? 'kv' : 'token'}`}>
     <div className="comparison-card-head"><div className="comparison-mode"><span className={`comparison-bubble ${kv ? 'kv' : 'token'}`}>
-      {kv ? <Database size={17}/> : <ArrowLeftRight size={17}/>}</span><div><strong>{kv ? 'KV-Cache' : 'Token'}</strong><small>{kv ? 'LatentMAS / Continuous Memory' : 'TextMAS / Discrete Tokens'}</small></div></div>
+      {kv ? <Database size={17}/> : <ArrowLeftRight size={17}/>}</span><div><strong>{kv ? 'KV-Cache' : 'Token'}</strong><small>{kv ? `LatentMAS · ${result?.delta === false ? 'FULL' : 'APPEND enabled'}` : 'TextMAS / Discrete Tokens'}</small></div></div>
       {result ? <span className={`comparison-status ${result.correct === false ? 'incorrect' : result.expected && result.correct == null ? 'unparsed' : !result.expected ? 'missing' : ''}`}>{result.correct === false ? <XCircle size={12}/> : result.expected && result.correct == null ? <CircleHelp size={12}/> : <CheckCircle2 size={12}/>} {label}</span> : <span className="comparison-status missing">{label}</span>}</div>
     <div className="comparison-values"><div><span>端到端总耗时</span><strong>{result ? (result.durationMs / 1000).toFixed(2) : '—'} <small>s</small></strong></div>
       <div><span>累计传输数据量</span><strong>{result ? bytes(result.bytes) : '—'}</strong></div></div>

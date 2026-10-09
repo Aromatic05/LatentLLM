@@ -13,6 +13,7 @@ export function ExperimentPanel() {
   const { status, connected, media, setMedia, busy, setBusy, error, setError, setArchive } = useWorkspace();
   const [prompt, setPrompt] = useState(sampleTasks[0].prompt);
   const [expected, setExpected] = useState(sampleTasks[0].expected);
+  const [delta, setDelta] = useState(true);
   const run = status.run;
   const active = run?.status === 'running';
   async function submit(event: React.FormEvent) {
@@ -20,7 +21,7 @@ export function ExperimentPanel() {
     if (busy || active || !prompt.trim()) return;
     setError(null);
     setBusy(true);
-    try { await startRun(prompt.trim(), media, expected.trim()); setArchive(null); }
+    try { await startRun(prompt.trim(), media, expected.trim(), delta); setArchive(null); }
     catch (cause) { setError(cause instanceof Error ? cause.message : '实验启动失败'); }
     finally { setBusy(false); }
   }
@@ -39,6 +40,8 @@ export function ExperimentPanel() {
         const Icon = option.icon;
         return <button type="button" key={option.value} onClick={() => setMedia(option.value as Media)} className={media === option.value ? 'mode-option selected' : 'mode-option'}><Icon size={17}/><strong>{option.title}</strong><small>{option.desc}</small></button>;
       })}</div>
+      {media === 'kv' && <label className="delta-toggle"><input type="checkbox" checked={delta} onChange={e => setDelta(e.target.checked)} />
+        <span><strong>KV-Cache 增量传输</strong><small>{delta ? 'FULL → APPEND，基础缓存缺失时回退完整传输' : '关闭增量：每次发送完整 KV，用于基线对照'}</small></span></label>}
       <button type="submit" className="run-button" disabled={busy || active || !prompt.trim() || !connected || !status.modelReady}><Play fill="currentColor" size={15} />{busy ? '正在提交' : active ? '实验运行中' : '启动实验'}<ArrowRight size={16} /></button>
       {!connected && <div className="form-warning">Web API 尚未连接。启动 Python 服务后即可运行。</div>}
       {connected && !status.modelReady && <div className="form-warning">推理模型尚未准备完成，请先配置本地模型与远程节点。</div>}

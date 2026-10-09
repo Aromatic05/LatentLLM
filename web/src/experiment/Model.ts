@@ -38,6 +38,10 @@ export interface TransferRecord {
   tensors?: number;
   sendMs?: number;
   receiveMs?: number;
+  transferMode?: 'full' | 'append';
+  fullBytes?: number;
+  savedBytes?: number;
+  fallback?: boolean;
 }
 
 export interface EventRecord {
@@ -53,6 +57,7 @@ export interface RunRecord {
   id: string;
   prompt: string;
   media: Media;
+  delta?: boolean;
   status: RunStatus;
   startedAt: string;
   replayed?: boolean;
@@ -71,9 +76,11 @@ export interface RunSummary {
   id: string;
   prompt: string;
   media: Media;
+  delta?: boolean;
   status: RunStatus;
   durationMs: number;
   bytes: number;
+  savedBytes?: number;
   answer?: string;
   expected?: string | null;
   prediction?: string | null;
