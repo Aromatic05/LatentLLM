@@ -88,3 +88,50 @@ training jobs; default port 8000 is likely occupied.
 During initial network or library checks the Python services can run without
 `--model`. This is transport-only mode: the dashboard remains available,
 but **modelReady is false** and the UI must not claim LLM experiments ran.
+
+## Experimental KV APPEND transport
+
+The two-node handoff protocol supports two distinct **wire** modes without
+changing the 1 MiB Protobuf `Packet.chunk` streaming mechanism:
+
+- `FULL`: transfer the complete contiguous KV tensor snapshot.
+- `APPEND`: when the receiver already holds a verified base cache version,
+  send only newly appended KV **sequence positions**, separately for each
+  batch/head/layer K and V tensor. Cache metadata includes cache IDs,
+  base SHA-256, sequence interval, tensor shapes/dtypes and both full and
+  transmitted checksums.
+
+The first Planner → Critic transfer is FULL. With alternating nodes, Critic →
+Refiner and Refiner → Judger can reuse the Planner/Critic cache already stored
+on the respective receiving node. The receiver assembles the complete byte
+layout, verifies its SHA-256 and passes a normal `DynamicCache` to the next
+agent. The receiver rejects missing/mismatching base versions and the sender
+**automatically falls back to FULL**. An unexpected mutation to an existing
+KV prefix also makes the sender choose FULL. Per-node registries retain up to
+four immutable full snapshots and are cleared on a new run.
+
+The UI defaults to APPEND for KV runs; uncheck **KV-Cache 增量传输** to run a
+FULL-only control with the same prompt. The REST request body also accepts
+`"delta": false` under `POST /api/runs`. Transfer details and archived runs
+include `transferMode`, `fullBytes`, `bytes`, `savedBytes` and `fallback`.
+
+**Important limits:** APPEND currently optimizes the bytes transmitted over
+network, **not** GPU → CPU serialization: each producer still exports a full
+CPU snapshot and compares its byte prefixes. Each receiver still reconstructs
+a full CPU buffer before copying to GPU. Therefore APPEND can be slower than
+FULL on local loopback, especially with fast networks and CPU contention. It
+is not compression, RDMA or GPU Direct. Payload metrics do not include gRPC
+framing overhead. Same weights/layout are required at both nodes; model-name
+matching is not a cryptographic fingerprint of identical model weights.
+
+Example from one local Qwen3-0.6B two-process run, same prompt and 10 latent
+steps (recorded under `var/experiments`): FULL sent 72,253,440 bytes (three
+snapshots). APPEND sent 37,961,728 bytes (one FULL, two APPEND), saving
+34,291,712 bytes / 47.46%. The sum of coordinator RPC handoff times was about
+255 ms FULL vs 303 ms APPEND: no latency acceleration was observed locally.
+LLM decoding uses sampling, so total wall-time and answer text should not be
+interpreted as deterministic transport benchmarks.
+
+The test suite additionally verifies a real Qwen3 and Llama Transformer can
+continue from network-APPEND KV with identical logits; >1 MiB packet
+boundaries, receiver cache loss, changed prefixes, and FULL-only baseline.

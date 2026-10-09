@@ -28,10 +28,15 @@ export function ComparePanel() {
   const history = status.history ?? [];
   const matching = history.filter(run => current && run.prompt === current.prompt && run.status === 'completed');
   const last = (mode: Media) => matching.find(run => run.media === mode);
+  const full = matching.find(run => run.media === 'kv' && run.delta === false);
+  const append = matching.find(run => run.media === 'kv' && run.delta !== false && run.savedBytes !== undefined);
   return <section className="panel comparison-panel" id="comparison">
     <div className="panel-header"><div><div className="panel-kicker"><FlaskConical size={13}/> SAME-TASK MODE COMPARISON</div>
       <h2>Token / KV-Cache 实验对照</h2></div><span className="panel-counter">SAME PROMPT / OBSERVED DATA</span></div>
     <div className="comparison-grid"><ResultCard media="token" result={last('token')}/><ResultCard media="kv" result={last('kv')}/></div>
+    {full && append && <div className="delta-comparison"><strong>KV-Cache · FULL / APPEND</strong>
+      <span>完整基线 {bytes(full.bytes)}</span><span>增量实传 {bytes(append.bytes)}</span>
+      <span className="delta-saved">增量实验节省 {bytes(append.savedBytes ?? 0)}</span></div>}
     <div className="comparison-footer"><Clock3 size={12}/><span>仅比较相同任务输入的最近记录。两种模式的推理算法不同，耗时差不代表纯通信收益；不显示未实测数据。</span></div>
   </section>;
 }
