@@ -3,8 +3,11 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from latentllm.experiment.run import Experiment
@@ -67,5 +70,17 @@ def create_app(experiment: Experiment) -> FastAPI:
             pass
         finally:
             experiment.subscribers.discard(queue)
+
+    # In the lab a prebuilt React bundle can be served from the same port as
+    # the API, so Node.js and a separate reverse proxy are unnecessary.
+    distribution = Path(__file__).resolve().parents[4] / 'web' / 'dist'
+    if (distribution / 'index.html').is_file():
+        assets = distribution / 'assets'
+        if assets.is_dir():
+            app.mount('/assets', StaticFiles(directory=assets), name='assets')
+
+        @app.get('/', include_in_schema=False)
+        async def dashboard():
+            return FileResponse(distribution / 'index.html')
 
     return app

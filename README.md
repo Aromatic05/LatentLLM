@@ -70,3 +70,21 @@ pnpm --dir web build
 ```
 
 `tests/` checks externally observable Token ID roundtrips, real PyTorch KV tensor roundtrips, actual gRPC process-facing streaming behavior, archive grading, and continuation logits of a small real Qwen3 Transformer after a network KV handoff. Production inference is checked separately by running real Qwen model processes and reviewing actual outputs.
+
+## Shared lab deployment (SYM)
+
+The Git repository does **not** contain model weights or environments.
+The lab already provides `LLM Model/Llama-3.2-1B-Instruct` and
+`LLM Model/Qwen2.5-3B-Instruct`. Use an **absolute path to an existing model**
+for `--model` on both nodes. Both processes must use the identical weights.
+
+Build the React site on the development PC (`pnpm --dir web build`) and copy
+only `web/dist` (approximately 1–2 MiB) with the Git sources. If `web/dist`
+exists, FastAPI automatically serves the dashboard at its own API port. No
+Node.js runtime is required on the experiment machine. For a shared GPU
+machine, select unused ports and a GPU that will not interfere with existing
+training jobs; default port 8000 is likely occupied.
+
+During initial network or library checks the Python services can run without
+`--model`. This is transport-only mode: the dashboard remains available,
+but **modelReady is false** and the UI must not claim LLM experiments ran.
