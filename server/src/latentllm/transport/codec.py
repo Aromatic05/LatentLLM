@@ -104,3 +104,94 @@ def decode_cache(payload: bytes, tensors: list[model.Tensor], device: str = 'cpu
         return cache
     except ImportError:
         return tuple(layers)
+
+
+def _span(spec: model.Tensor, data: bytes) -> tuple[int, int, int]:
+    """Validate the packed [batch, heads, sequence, dimension] byte layout."""
+    dtype = _DTYPE.get(spec.dtype)
+    shape = list(spec.shape)
+    if dtype is None or len(shape) != 4 or any(dim <= 0 for dim in shape):
+        raise ValueError('Invalid KV tensor dtype or dimensions')
+    element = torch.empty((), dtype=dtype).element_size()
+    per_token = shape[-1] * element
+    heads = shape[0] * shape[1]
+    stride = shape[-2] * per_token
+    if spec.size != heads * stride or spec.offset + spec.size > len(data):
+        raise ValueError('KV tensor metadata does not match its packed bytes')
+    return heads, stride, per_token
+
+
+def slice_cache(base: model.Header, previous: bytes,
+                current: model.Header, payload: bytes) -> tuple[bytes, list[model.Tensor]]:
+    """Extract newly appended sequence positions; reject any modified prefix.
+
+    Chunk boundaries are deliberately independent from tensor boundaries.
+    Each [batch, head] has its own contiguous sequence, so a raw payload
+    suffix is NOT a valid KV delta.
+    """
+    start, end = base.positions, current.positions
+    if not 0 < start < end or not base.tensors or len(base.tensors) != len(current.tensors):
+        raise ValueError('KV base or sequence interval is incompatible')
+    output = bytearray()
+    metadata: list[model.Tensor] = []
+    for old, new in zip(base.tensors, current.tensors, strict=True):
+        if old.name != new.name or old.dtype != new.dtype:
+            raise ValueError('KV tensor identity changed')
+        if list(old.shape[:2]) + list(old.shape[3:]) != list(new.shape[:2]) + list(new.shape[3:]):
+            raise ValueError('KV tensor head/dimension layout changed')
+        old_heads, old_stride, old_token = _span(old, previous)
+        new_heads, new_stride, new_token = _span(new, payload)
+        if old_heads != new_heads or old_token != new_token:
+            raise ValueError('KV tensor geometry changed')
+        if old.shape[2] != start or new.shape[2] != end:
+            raise ValueError('KV sequence length differs from header')
+        offset = len(output)
+        old_view, new_view = memoryview(previous), memoryview(payload)
+        for head in range(old_heads):
+            a = old_view[old.offset + head * old_stride: old.offset + (head + 1) * old_stride]
+            b = new_view[new.offset + head * new_stride: new.offset + head * new_stride + old_stride]
+            if a != b:
+                raise ValueError(f'KV prefix changed in {old.name}, head {head}')
+            output.extend(new_view[new.offset + head * new_stride + old_stride:
+                                   new.offset + (head + 1) * new_stride])
+        metadata.append(model.Tensor(name=new.name, dtype=new.dtype,
+                                     shape=[*new.shape[:2], end - start, new.shape[3]],
+                                     offset=offset, size=len(output) - offset))
+    return bytes(output), metadata
+
+
+def merge_cache(base: model.Header, previous: bytes,
+                delta: model.Header, payload: bytes) -> tuple[bytes, list[model.Tensor]]:
+    """Reconstruct the exact complete layout from an existing base and APPEND.
+
+    No pickle or object deserialization: just byte concatenation per head.
+    The caller must also validate base identity and full-payload SHA-256.
+    """
+    start, end = delta.start_position, delta.end_position
+    if start != base.positions or end != delta.positions or not 0 < start < end:
+        raise ValueError('KV append interval does not match cached base')
+    if len(base.tensors) != len(delta.tensors) or not base.tensors:
+        raise ValueError('KV tensor counts do not match')
+    output = bytearray()
+    metadata: list[model.Tensor] = []
+    for old, fragment in zip(base.tensors, delta.tensors, strict=True):
+        if old.name != fragment.name or old.dtype != fragment.dtype:
+            raise ValueError('KV tensor identity mismatch')
+        if list(old.shape[:2]) + list(old.shape[3:]) != list(fragment.shape[:2]) + list(fragment.shape[3:]):
+            raise ValueError('KV tensor head/dimension mismatch')
+        heads, old_stride, old_token = _span(old, previous)
+        fragment_heads, delta_stride, delta_token = _span(fragment, payload)
+        if heads != fragment_heads or old_token != delta_token:
+            raise ValueError('KV tensor geometry mismatch')
+        if old.shape[2] != start or fragment.shape[2] != end - start:
+            raise ValueError('KV tensor sequence mismatch')
+        offset = len(output)
+        old_view, delta_view = memoryview(previous), memoryview(payload)
+        for head in range(heads):
+            output.extend(old_view[old.offset + head * old_stride: old.offset + (head + 1) * old_stride])
+            output.extend(delta_view[fragment.offset + head * delta_stride:
+                                     fragment.offset + (head + 1) * delta_stride])
+        metadata.append(model.Tensor(name=old.name, dtype=old.dtype,
+                                     shape=[*old.shape[:2], end, old.shape[3]],
+                                     offset=offset, size=len(output) - offset))
+    return bytes(output), metadata
