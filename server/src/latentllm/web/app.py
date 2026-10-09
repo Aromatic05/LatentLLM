@@ -17,6 +17,7 @@ class RunInput(BaseModel):
     prompt: str = Field(min_length=1, max_length=8192)
     media: str
     expected: str | None = Field(default=None, max_length=80)
+    delta: bool = True
 
 
 def create_app(experiment: Experiment) -> FastAPI:
@@ -51,7 +52,7 @@ def create_app(experiment: Experiment) -> FastAPI:
     @app.post('/api/runs', status_code=202)
     async def launch(request: RunInput):
         try:
-            return {'run_id': await experiment.start(request.prompt, request.media, request.expected)}
+            return {'run_id': await experiment.start(request.prompt, request.media, request.expected, request.delta)}
         except ValueError as error:
             raise HTTPException(409, str(error)) from error
         except RuntimeError as error:

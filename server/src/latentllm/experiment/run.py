@@ -63,7 +63,7 @@ class Experiment:
             'id': run['id'], 'prompt': run['prompt'], 'media': run['media'], 'status': run['status'],
             'durationMs': (finished - started).total_seconds() * 1000,
             'bytes': sum(transfer.get('bytes', 0) for transfer in run['transfers']),
-            'answer': run.get('answer'), 'expected': run.get('expected'),
+            'answer': run.get('answer'), 'delta': run.get('delta', True), 'expected': run.get('expected'),
             'prediction': run.get('prediction'), 'correct': run.get('correct'),
         }
 
@@ -122,7 +122,7 @@ class Experiment:
         self.run['events'].append(event)
         self.publish()
 
-    async def start(self, prompt: str, media: str, expected: str | None = None) -> str:
+    async def start(self, prompt: str, media: str, expected: str | None = None, delta: bool = True) -> str:
         async with self.lock:
             if self.run and self.run['status'] == 'running':
                 raise ValueError('Another experiment is running')
@@ -132,7 +132,7 @@ class Experiment:
                 raise ValueError('Unsupported media')
             run_id = str(uuid.uuid4())
             self.run = {
-                'id': run_id, 'prompt': prompt, 'media': media, 'expected': expected.strip() if expected else None, 'status': 'running',
+                'id': run_id, 'prompt': prompt, 'media': media, 'delta': delta, 'expected': expected.strip() if expected else None, 'status': 'running',
                 'startedAt': utcnow(), 'agents': [
                     {'id': role, 'role': role.title(), 'node': f'node-{"a" if i % 2 == 0 else "b"}', 'status': 'pending'}
                     for i, role in enumerate(ROLES)],
@@ -190,12 +190,18 @@ class Experiment:
                 run['transfers'].append(transfer)
                 self.emit('transfer.started', f'{role.title()} → {target.title()}：开始 {run["media"]} 传输', agent=role)
                 start = time.perf_counter_ns()
-                receipt = await Client(address).forward(run_id, role, target, self.addresses[(index + 1) % 2])
+                receipt = await Client(address).forward(run_id, role, target, self.addresses[(index + 1) % 2],
+                                                        disable_delta=not run['delta'])
                 elapsed = (time.perf_counter_ns() - start) / 1_000_000
                 if not receipt.receipt.accepted:
                     raise RuntimeError(f'Transfer to {target} was rejected')
-                transfer.update(bytes=receipt.size, durationMs=elapsed, status='completed', tensors=receipt.tensors, sequence=receipt.positions, sendMs=receipt.send_ms, receiveMs=receipt.receipt.duration_ms)
-                self.emit('transfer.completed', f'{role.title()} → {target.title()}：完成 {receipt.size} B，{elapsed:.1f} ms', agent=role, duration=elapsed)
+                transfer.update(bytes=receipt.size, fullBytes=receipt.full_size,
+                                savedBytes=max(0, receipt.full_size - receipt.size),
+                                transferMode='append' if receipt.transfer_mode == model.APPEND else 'full',
+                                fallback=receipt.fallback, durationMs=elapsed, status='completed',
+                                tensors=receipt.tensors, sequence=receipt.positions,
+                                sendMs=receipt.send_ms, receiveMs=receipt.receipt.duration_ms)
+                self.emit('transfer.completed', f'{role.title()} → {target.title()}：{transfer["transferMode"].upper()} {receipt.size} B / {receipt.full_size} B，节省 {transfer["savedBytes"]} B，{elapsed:.1f} ms', agent=role, duration=elapsed)
             run['status'] = 'completed'
             run['finishedAt'] = utcnow()
             self.emit('run.completed', '全部 Agent 已完成协作任务')
