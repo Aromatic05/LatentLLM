@@ -62,6 +62,7 @@ message HealthReply {
   string model = 3;
   string device = 4;
   bool ready = 5;
+  bool supports_append = 6;
 }
 
 message StepRequest {

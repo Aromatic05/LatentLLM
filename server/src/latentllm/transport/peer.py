@@ -55,6 +55,7 @@ class Peer(service.NodeServicer):
             model=getattr(self.runner, 'name', '') or '',
             device=getattr(self.runner, 'device', '') or '',
             ready=bool(getattr(self.runner, 'ready', False)),
+            supports_append=True,
         )
 
     async def Transfer(self, stream: Any, context: grpc.aio.ServicerContext) -> model.Receipt:
@@ -213,6 +214,16 @@ class Peer(service.NodeServicer):
                         yield model.Packet(chunk=data[offset:offset + CHUNK_SIZE])
                 return await stub.Transfer(packets(), timeout=180)
 
+            if header.transfer_mode == model.APPEND:
+                try:
+                    remote = await stub.Health(model.HealthRequest(), timeout=5)
+                    compatible = remote.supports_append
+                except grpc.aio.AioRpcError:
+                    compatible = False
+                if not compatible:
+                    # Older nodes would misread an APPEND payload as FULL.
+                    header, wire_payload = full, payload
+                    fallback = True
             try:
                 receipt = await send(header, wire_payload)
             except grpc.aio.AioRpcError as error:

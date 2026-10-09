@@ -116,8 +116,12 @@ class NetworkTests(unittest.TestCase):
     def test_modified_prefix_requires_full_snapshot(self):
         self._scenario(expect_delta=True, change_prefix=True)
 
+    def test_legacy_receiver_does_not_receive_append(self):
+        self._scenario(expect_delta=True, legacy_target=True)
+
     def _scenario(self, *, expect_delta: bool, evict_before_critic: bool = False,
-                  large: bool = False, change_prefix: bool = False):
+                  large: bool = False, change_prefix: bool = False,
+                  legacy_target: bool = False):
         import asyncio
         import socket
         from latentllm.transport.client import Client
@@ -131,7 +135,13 @@ class NetworkTests(unittest.TestCase):
         async def execute():
             first_runner, second_runner = self.Runner(), self.Runner()
             first_runner.large = second_runner.large = large
-            first, second = Peer('node-a', first_runner), Peer('node-b', second_runner)
+            class LegacyPeer(Peer):
+                async def Health(self, request, context):
+                    response = await super().Health(request, context)
+                    response.supports_append = False
+                    return response
+            first = Peer('node-a', first_runner)
+            second = (LegacyPeer if legacy_target else Peer)('node-b', second_runner)
             address_a, address_b = f'127.0.0.1:{port()}', f'127.0.0.1:{port()}'
             sa, sb = await serve(first, address_a), await serve(second, address_b)
             try:
@@ -168,8 +178,11 @@ class NetworkTests(unittest.TestCase):
                 self.assertTrue(out.success, out.error)
                 third_copy = await ca.forward('delta-run', 'refiner', 'judger', address_b,
                                               disable_delta=not expect_delta)
-                self.assertEqual(third_copy.transfer_mode, model.APPEND if expect_delta else model.FULL)
-                self.assertLess(third_copy.size, third_copy.full_size) if expect_delta else None
+                self.assertEqual(third_copy.transfer_mode, model.APPEND if expect_delta and not legacy_target else model.FULL)
+                if legacy_target:
+                    self.assertTrue(third_copy.fallback)
+                if expect_delta and not legacy_target:
+                    self.assertLess(third_copy.size, third_copy.full_size)
                 out = await cb.step('delta-run', 'judger', '8+7?', model.KV_CACHE)
                 self.assertTrue(out.success, out.error)
                 self.assertEqual(out.output, '15')
