@@ -105,7 +105,9 @@ The first Planner → Critic transfer is FULL. With alternating nodes, Critic �
 Refiner and Refiner → Judger can reuse the Planner/Critic cache already stored
 on the respective receiving node. The receiver assembles the complete byte
 layout, verifies its SHA-256 and passes a normal `DynamicCache` to the next
-agent. The receiver rejects missing/mismatching base versions and the sender
+agent. The sender checks the receiver's `Health.supports_append` before sending
+an APPEND: an older peer without this capability is given FULL instead. The
+receiver rejects missing/mismatching base versions and the sender
 **automatically falls back to FULL**. An unexpected mutation to an existing
 KV prefix also makes the sender choose FULL. Per-node registries retain up to
 four immutable full snapshots and are cleared on a new run.
@@ -134,4 +136,5 @@ interpreted as deterministic transport benchmarks.
 
 The test suite additionally verifies a real Qwen3 and Llama Transformer can
 continue from network-APPEND KV with identical logits; >1 MiB packet
-boundaries, receiver cache loss, changed prefixes, and FULL-only baseline.
+boundaries, receiver cache loss, changed prefixes, legacy peer capability
+negotiation, and FULL-only baseline.
