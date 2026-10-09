@@ -68,15 +68,23 @@ class NetworkTests(unittest.TestCase):
         ready = True
         name = 'test-model'
         device = 'cpu'
+        large = False
 
         def step(self, request, incoming):
             sizes = {'planner': 8, 'critic': 13, 'refiner': 21, 'judger': 21}
-            count = sizes[request.role]
+            count = ({'planner': 1024, 'critic': 1064, 'refiner': 1112, 'judger': 1112}
+                     if self.large else sizes)[request.role]
+            if self.large:
+                source = torch.arange(count * 16, dtype=torch.float32).reshape(1, 1, count, 16).repeat(2, 8, 1, 1)
+                state = ((source / 512, source / 512 + 1), (source / 512 + 2, source / 512 + 3))
+            else:
+                state = None
             def patterned(offset):
                 return torch.tensor([head * 1024 + point * 4 + feature + offset
                                      for head in range(2) for point in range(count) for feature in range(4)],
                                     dtype=torch.float32).reshape(1, 2, count, 4)
-            state = ((patterned(0), patterned(2000)), (patterned(4000), patterned(6000)))
+            if state is None:
+                state = ((patterned(0), patterned(2000)), (patterned(4000), patterned(6000)))
             if incoming:
                 previous, data = incoming
                 cache = decode_cache(data, list(previous.tensors))
@@ -102,7 +110,14 @@ class NetworkTests(unittest.TestCase):
     def test_delta_can_be_disabled_for_a_full_baseline(self):
         self._scenario(expect_delta=False)
 
-    def _scenario(self, *, expect_delta: bool, evict_before_critic: bool = False):
+    def test_megabyte_chunk_boundaries_preserve_delta(self):
+        self._scenario(expect_delta=True, large=True)
+
+    def test_modified_prefix_requires_full_snapshot(self):
+        self._scenario(expect_delta=True, change_prefix=True)
+
+    def _scenario(self, *, expect_delta: bool, evict_before_critic: bool = False,
+                  large: bool = False, change_prefix: bool = False):
         import asyncio
         import socket
         from latentllm.transport.client import Client
@@ -114,7 +129,9 @@ class NetworkTests(unittest.TestCase):
                 return sock.getsockname()[1]
 
         async def execute():
-            first, second = Peer('node-a', self.Runner()), Peer('node-b', self.Runner())
+            first_runner, second_runner = self.Runner(), self.Runner()
+            first_runner.large = second_runner.large = large
+            first, second = Peer('node-a', first_runner), Peer('node-b', second_runner)
             address_a, address_b = f'127.0.0.1:{port()}', f'127.0.0.1:{port()}'
             sa, sb = await serve(first, address_a), await serve(second, address_b)
             try:
@@ -124,18 +141,28 @@ class NetworkTests(unittest.TestCase):
                 first_copy = await ca.forward('delta-run', 'planner', 'critic', address_b)
                 self.assertEqual(first_copy.transfer_mode, model.FULL)
                 self.assertEqual(first_copy.size, first_copy.full_size)
+                if large:
+                    self.assertGreater(first_copy.size, 1024 * 1024)
 
                 out = await cb.step('delta-run', 'critic', '8+7?', model.KV_CACHE)
                 self.assertTrue(out.success, out.error)
                 if evict_before_critic:
                     first.cache.clear()
+                if change_prefix:
+                    meta, original = second.outgoing['delta-run']
+                    changed = bytearray(original)
+                    changed[0] ^= 0x01
+                    second.outgoing['delta-run'] = (meta, bytes(changed))
                 second_copy = await cb.forward('delta-run', 'critic', 'refiner', address_a,
                                                disable_delta=not expect_delta)
                 self.assertEqual(second_copy.transfer_mode,
-                                 model.FULL if evict_before_critic or not expect_delta else model.APPEND)
-                self.assertEqual(second_copy.fallback, evict_before_critic)
+                                 model.FULL if evict_before_critic or change_prefix or not expect_delta else model.APPEND)
+                self.assertEqual(second_copy.fallback, evict_before_critic or change_prefix)
                 if second_copy.transfer_mode == model.APPEND:
                     self.assertLess(second_copy.size, second_copy.full_size)
+                if change_prefix:
+                    self.assertEqual(first.incoming[('delta-run', 'refiner')][1], bytes(changed))
+                    return
 
                 out = await ca.step('delta-run', 'refiner', '8+7?', model.KV_CACHE)
                 self.assertTrue(out.success, out.error)
