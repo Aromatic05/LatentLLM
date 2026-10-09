@@ -59,3 +59,94 @@ class DeltaTests(unittest.TestCase):
                               end_position=current.positions, tensors=descriptors)
         with self.assertRaises(ValueError):
             merge_cache(prev, before, broken, fragment)
+
+
+class NetworkTests(unittest.TestCase):
+    """Exercise FULL -> APPEND -> APPEND via two actual gRPC server sockets."""
+
+    class Runner:
+        ready = True
+        name = 'test-model'
+        device = 'cpu'
+
+        def step(self, request, incoming):
+            sizes = {'planner': 8, 'critic': 13, 'refiner': 21, 'judger': 21}
+            count = sizes[request.role]
+            def patterned(offset):
+                return torch.tensor([head * 1024 + point * 4 + feature + offset
+                                     for head in range(2) for point in range(count) for feature in range(4)],
+                                    dtype=torch.float32).reshape(1, 2, count, 4)
+            state = ((patterned(0), patterned(2000)), (patterned(4000), patterned(6000)))
+            if incoming:
+                previous, data = incoming
+                cache = decode_cache(data, list(previous.tensors))
+                for original, restored in zip(state, cache):
+                    for target, prefix in zip(original, restored):
+                        if not torch.equal(target[:, :, :previous.positions, :], prefix):
+                            raise RuntimeError('Receiver reconstructed the wrong KV prefix')
+            elif request.role != 'planner':
+                raise RuntimeError('Missing incoming KV cache')
+            data, descriptors, length = encode_cache(state)
+            header = model.Header(run_id=request.run_id, model=self.name, media=model.KV_CACHE,
+                                  positions=length, tensors=descriptors)
+            result = dict(output='15' if request.role == 'judger' else '', tokens=1,
+                          positions=length, duration_ms=0.1)
+            return result, header, data
+
+    def test_three_handoffs_use_full_then_two_appends(self):
+        self._scenario(expect_delta=True)
+
+    def test_missing_receiver_base_falls_back_to_full(self):
+        self._scenario(expect_delta=True, evict_before_critic=True)
+
+    def test_delta_can_be_disabled_for_a_full_baseline(self):
+        self._scenario(expect_delta=False)
+
+    def _scenario(self, *, expect_delta: bool, evict_before_critic: bool = False):
+        import asyncio
+        import socket
+        from latentllm.transport.client import Client
+        from latentllm.transport.peer import Peer, serve
+
+        def port():
+            with socket.socket() as sock:
+                sock.bind(('127.0.0.1', 0))
+                return sock.getsockname()[1]
+
+        async def execute():
+            first, second = Peer('node-a', self.Runner()), Peer('node-b', self.Runner())
+            address_a, address_b = f'127.0.0.1:{port()}', f'127.0.0.1:{port()}'
+            sa, sb = await serve(first, address_a), await serve(second, address_b)
+            try:
+                ca, cb = Client(address_a), Client(address_b)
+                out = await ca.step('delta-run', 'planner', '8+7?', model.KV_CACHE)
+                self.assertTrue(out.success, out.error)
+                first_copy = await ca.forward('delta-run', 'planner', 'critic', address_b)
+                self.assertEqual(first_copy.transfer_mode, model.FULL)
+                self.assertEqual(first_copy.size, first_copy.full_size)
+
+                out = await cb.step('delta-run', 'critic', '8+7?', model.KV_CACHE)
+                self.assertTrue(out.success, out.error)
+                if evict_before_critic:
+                    first.cache.clear()
+                second_copy = await cb.forward('delta-run', 'critic', 'refiner', address_a,
+                                               disable_delta=not expect_delta)
+                self.assertEqual(second_copy.transfer_mode,
+                                 model.FULL if evict_before_critic or not expect_delta else model.APPEND)
+                self.assertEqual(second_copy.fallback, evict_before_critic)
+                if second_copy.transfer_mode == model.APPEND:
+                    self.assertLess(second_copy.size, second_copy.full_size)
+
+                out = await ca.step('delta-run', 'refiner', '8+7?', model.KV_CACHE)
+                self.assertTrue(out.success, out.error)
+                third_copy = await ca.forward('delta-run', 'refiner', 'judger', address_b,
+                                              disable_delta=not expect_delta)
+                self.assertEqual(third_copy.transfer_mode, model.APPEND if expect_delta else model.FULL)
+                self.assertLess(third_copy.size, third_copy.full_size) if expect_delta else None
+                out = await cb.step('delta-run', 'judger', '8+7?', model.KV_CACHE)
+                self.assertTrue(out.success, out.error)
+                self.assertEqual(out.output, '15')
+            finally:
+                await sa.stop(0)
+                await sb.stop(0)
+        asyncio.run(execute())

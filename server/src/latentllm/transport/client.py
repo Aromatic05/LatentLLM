@@ -18,6 +18,6 @@ class Client:
         async with grpc.aio.insecure_channel(self.address) as channel:
             return await service.NodeStub(channel).Step(model.StepRequest(run_id=run_id, role=role, question=question, media=media), timeout=240)
 
-    async def forward(self, run_id: str, source: str, target: str, address: str) -> model.ForwardReply:
+    async def forward(self, run_id: str, source: str, target: str, address: str, *, disable_delta: bool = False) -> model.ForwardReply:
         async with grpc.aio.insecure_channel(self.address) as channel:
-            return await service.NodeStub(channel).Forward(model.ForwardRequest(run_id=run_id, source=source, target=target, address=address), timeout=180)
+            return await service.NodeStub(channel).Forward(model.ForwardRequest(run_id=run_id, source=source, target=target, address=address, disable_delta=disable_delta), timeout=180)
