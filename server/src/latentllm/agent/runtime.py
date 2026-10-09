@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from latentllm.agent.prompt import build_messages
 from latentllm.transport.codec import decode_cache, decode_tokens, encode_cache, encode_tokens
 from latentllm.transport.schema import model as wire
 
@@ -62,7 +63,6 @@ class Runtime:
         if not self.ready:
             raise RuntimeError('Model is not loaded')
         import torch
-        from prompts import build_agent_message_sequential_latent_mas, build_agent_messages_sequential_text_mas
 
         started = time.perf_counter_ns()
         header = wire.Header(run_id=request.run_id, model=self.name, media=request.media)
@@ -85,18 +85,14 @@ class Runtime:
 
         token_budget = self.judge_tokens if request.role == 'judger' else self.max_tokens
         if request.media == wire.TOKEN:
-            messages = build_agent_messages_sequential_text_mas(
-                role=request.role, question=request.question, context=context,
-                method='text_mas', args=self.args)
+            messages = build_messages(request.role, request.question, context, media='token')
             ids, mask = self._prepare(messages, request.role)
             generated, _ = self.model.generate_text_batch(
                 ids, mask, max_new_tokens=token_budget, temperature=0.6, top_p=0.95)
             output = generated[0].strip()
             cache = None
         elif request.media == wire.KV_CACHE:
-            messages = build_agent_message_sequential_latent_mas(
-                role=request.role, question=request.question, context='',
-                method='latent_mas', args=self.args)
+            messages = build_messages(request.role, request.question, media='kv')
             ids, mask = self._prepare(messages, request.role)
             if request.role != 'judger':
                 with torch.no_grad():
